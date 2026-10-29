@@ -29,7 +29,7 @@ asset_meta = asset_universe[selected_asset]
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("🔒 Active Regulatory Route")
-st.sidebar.info(f"*Jurisdiction:* {asset_meta['venue']}")
+st.sidebar.info(f"**Jurisdiction:** {asset_meta['venue']}")
 
 # Initialize Navigation Tabs
 tab1, tab2, tab3, tab4 = st.tabs([
