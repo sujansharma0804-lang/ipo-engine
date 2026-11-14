@@ -14,9 +14,9 @@ from reportlab.lib import colors
 # =========================================================
 # 1. PAGE CONFIG & VERSIONING
 # =========================================================
-MODEL_VERSION = "v6.2.0-PRO-PIPELINE"
+MODEL_VERSION = "v6.3.0-PRO-PIPELINE"
 st.set_page_config(
-    page_title="Aftermath Institutional IPO & Valuation Terminal",
+    page_title="Institutional IPO Valuation & Syndicate Terminal",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -200,8 +200,8 @@ HISTORICAL_BACKTEST = pd.DataFrame([
 # =========================================================
 # 3. SIDEBAR CONTROLS & GOVERNANCE
 # =========================================================
-st.sidebar.markdown("### 🏛️ AFTERMATH ANALYTICS")
-st.sidebar.caption(f"Institutional IPO Terminal | `{MODEL_VERSION}`")
+st.sidebar.markdown("### 🏛️ INSTITUTIONAL TERMINAL")
+st.sidebar.caption(f"IPO & Valuation Engine | `{MODEL_VERSION}`")
 
 selected_issuer = st.sidebar.selectbox("Select Pipeline Issuer (Top 6)", list(IPO_PIPELINE.keys()))
 data = IPO_PIPELINE[selected_issuer]
@@ -248,7 +248,7 @@ def generate_detailed_pdf_report():
     table_cell_style = ParagraphStyle('TableCell', parent=styles['Normal'], fontSize=8, leading=11, textColor=colors.HexColor("#0f172a"))
 
     story = [
-        Paragraph("AFTERMATH ANALYTICS — INSTITUTIONAL IPO VALUATION & SYNDICATE PRICING TERMINAL", title_style),
+        Paragraph("INSTITUTIONAL IPO VALUATION & SYNDICATE PRICING TERMINAL", title_style),
         Paragraph("Comprehensive Pre-IPO Pipeline Audit & Executive Investment Committee Report | Covering Top 6 Issuers (Including Christ University Bangalore & Swiggy Benchmark)", subtitle_style),
         Spacer(1, 4),
         Paragraph("1. Executive Pipeline Summary & Valuation Matrix Across Top 6 Issuers", h2_style)
@@ -323,7 +323,7 @@ def generate_detailed_pdf_report():
     return pdf_filename
 
 # =========================================================
-# 5. ROBUST CALCULATIONS & FIXES FOR TAB 1
+# 5. ROBUST CALCULATIONS & FIXES
 # =========================================================
 dq_warnings = []
 if wacc <= term_growth:
@@ -342,7 +342,6 @@ dcf_ev = pv_fcfs + pv_tv
 dcf_eq = dcf_ev - act["net_debt"]
 dcf_fair_price = dcf_eq / act["shares_m"]
 
-# Robust P/E Handling for Negative Earnings (e.g. Zepto & Swiggy)
 pe_ttm_display = f"{(offer_price / eps_ttm):.1f}x" if eps_ttm > 0 else "N.M. (Negative TTM)"
 pe_fwd_display = f"{(offer_price / eps_fwd):.1f}x" if eps_fwd > 0 else "N.M. (Negative Fwd)"
 
@@ -374,7 +373,7 @@ else:
 # =========================================================
 # 6. MAIN APP TABS & VISUALIZATIONS
 # =========================================================
-st.markdown(f"### 📊 AFTERMATH ANALYTICS — `{data['ticker']}` | {selected_issuer}")
+st.markdown(f"### 📊 INSTITUTIONAL TERMINAL — `{data['ticker']}` | {selected_issuer}")
 st.caption(f"Venue: {data['venue']} | Data Source: `{data['source']}` | Timestamp: `{data['timestamp']}`")
 
 t1, t2, t3, t4, t5 = st.tabs([
@@ -396,7 +395,7 @@ with t1:
         st.metric("Upside / Downside", f"{upside_pct:+.1f}%", f"{curr}{upside_diff:+,.2f} per share")
     with c4:
         status_txt = "Undervalued" if upside_pct > 10 else ("Fairly Valued" if upside_pct >= -10 else "Overvalued")
-        st.metric("Valuation Summary", status_txt, f"Confidence: 88%")
+        st.metric("Valuation Summary", status_txt, "Confidence: 88%")
     with c5:
         st.metric("Model Rating", "HIGH", "Institutional")
 
@@ -420,17 +419,11 @@ with t1:
         base_p = blended_fair_value
         bull_p = blended_fair_value * 1.24
         with sc1:
-            st.info(f"**BEAR CASE**
-{curr}{bear_p:,.2f}
-Slow growth & compression")
+            st.info(f"**BEAR CASE**\n{curr}{bear_p:,.2f}\nSlow growth & compression")
         with sc2:
-            st.success(f"**BASE CASE**
-{curr}{base_p:,.2f}
-Steady consensus execution")
+            st.success(f"**BASE CASE**\n{curr}{base_p:,.2f}\nSteady consensus execution")
         with sc3:
-            st.warning(f"**BULL CASE**
-{curr}{bull_p:,.2f}
-Margin expansion & scale")
+            st.warning(f"**BULL CASE**\n{curr}{bull_p:,.2f}\nMargin expansion & scale")
 
     with right_col:
         st.markdown("#### 🏦 Syndicate Consensus & Price Target Bell Curve")
