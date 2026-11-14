@@ -5,16 +5,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from scipy.stats import norm
 from datetime import datetime
-import os
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
 
 # =========================================================
 # 1. PAGE CONFIG & VERSIONING
 # =========================================================
-MODEL_VERSION = "v6.3.0-PRO-PIPELINE"
+MODEL_VERSION = "v6.4.0-PRO-PIPELINE"
 st.set_page_config(
     page_title="Institutional IPO Valuation & Syndicate Terminal",
     layout="wide",
@@ -230,100 +225,7 @@ var_horizon_days = st.sidebar.slider("VaR Holding Horizon (Days)", 10, 60, 30, 5
 var_conf = st.sidebar.selectbox("VaR Confidence Level", [0.95, 0.99], index=0)
 
 # =========================================================
-# 4. COMPREHENSIVE PDF REPORT GENERATOR (REPORTLAB)
-# =========================================================
-def generate_detailed_pdf_report():
-    pdf_filename = "Institutional_IPO_Valuation_Terminal_Report.pdf"
-    doc = SimpleDocTemplate(
-        pdf_filename,
-        pagesize=landscape(letter),
-        leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36
-    )
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontSize=16, leading=20, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
-    subtitle_style = ParagraphStyle('DocSub', parent=styles['Normal'], fontSize=9.5, leading=13, textColor=colors.HexColor("#475569"), spaceAfter=12)
-    h2_style = ParagraphStyle('SectionHeader', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor("#1e293b"), spaceBefore=8, spaceAfter=4)
-    
-    table_header_style = ParagraphStyle('TableHeader', parent=styles['Normal'], fontSize=8.5, leading=11, textColor=colors.white, fontName='Helvetica-Bold')
-    table_cell_style = ParagraphStyle('TableCell', parent=styles['Normal'], fontSize=8, leading=11, textColor=colors.HexColor("#0f172a"))
-
-    story = [
-        Paragraph("INSTITUTIONAL IPO VALUATION & SYNDICATE PRICING TERMINAL", title_style),
-        Paragraph("Comprehensive Pre-IPO Pipeline Audit & Executive Investment Committee Report | Covering Top 6 Issuers (Including Christ University Bangalore & Swiggy Benchmark)", subtitle_style),
-        Spacer(1, 4),
-        Paragraph("1. Executive Pipeline Summary & Valuation Matrix Across Top 6 Issuers", h2_style)
-    ]
-
-    summary_table_data = [[
-        Paragraph("Issuer Name", table_header_style),
-        Paragraph("Ticker", table_header_style),
-        Paragraph("Venue", table_header_style),
-        Paragraph("LTM Revenue", table_header_style),
-        Paragraph("Offer Price", table_header_style),
-        Paragraph("Forward P/E", table_header_style),
-        Paragraph("Model Signal", table_header_style)
-    ]]
-
-    for name, item in IPO_PIPELINE.items():
-        a = item["actuals"]
-        d = item["defaults"]
-        summary_table_data.append([
-            Paragraph(name, table_cell_style),
-            Paragraph(item["ticker"], table_cell_style),
-            Paragraph(item["venue"], table_cell_style),
-            Paragraph(f"{item['curr']}{a['ltm_rev']:,.1f} {item['unit']}", table_cell_style),
-            Paragraph(f"{item['curr']}{d['offer_price']:,.2f}", table_cell_style),
-            Paragraph("24.5x", table_cell_style),
-            Paragraph("BUY (Undervalued Underpricing)", table_cell_style)
-        ])
-
-    t_summary = Table(summary_table_data, colWidths=[180, 65, 130, 95, 75, 75, 160])
-    t_summary.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#0f172a")),
-        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-        ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#0f172a")),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-    ]))
-    story.append(t_summary)
-    story.append(Spacer(1, 10))
-    story.append(PageBreak())
-
-    story.append(Paragraph("2. Detailed Issuer Dossiers, Financial Fundamentals & Risk Diagnostics", h2_style))
-    story.append(Spacer(1, 4))
-
-    for i, (name, item) in enumerate(IPO_PIPELINE.items(), 1):
-        a = item["actuals"]
-        d = item["defaults"]
-        dossier_data = [
-            [
-                Paragraph(f"<b>{i}. {name} ({item['ticker']})</b>", table_header_style),
-                Paragraph(f"<b>Venue:</b> {item['venue']} | <b>Source:</b> {item['source']} | <b>As of:</b> {item['timestamp']}", table_header_style)
-            ],
-            [
-                Paragraph(f"• <b>LTM Revenue:</b> {item['curr']}{a['ltm_rev']:,.1f} {item['unit']}<br/>• <b>LTM EBITDA:</b> {item['curr']}{a['ltm_ebitda']:,.1f} {item['unit']}<br/>• <b>Net Income:</b> {item['curr']}{a['net_income']:,.1f} {item['unit']}<br/>• <b>Net Debt / Cash:</b> {item['curr']}{a['net_debt']:,.1f} {item['unit']}", table_cell_style),
-                Paragraph(f"• <b>Proposed Offer Price:</b> {item['curr']}{d['offer_price']:,.2f}<br/>• <b>Projected Growth:</b> {d['rev_growth']}% Rev / {d['eps_growth']}% EPS<br/>• <b>Discount Rate (WACC):</b> {d['wacc']}% | <b>Terminal Growth:</b> {d['term_growth']}%<br/>• <b>Historical Volatility:</b> {d['vol']*100:.1f}%", table_cell_style)
-            ]
-        ]
-        t_dossier = Table(dossier_data, colWidths=[400, 395])
-        t_dossier.setStyle(TableStyle([
-            ('SPAN', (0,0), (1,0)),
-            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#1e293b")),
-            ('BACKGROUND', (0,1), (-1,-1), colors.HexColor("#f8fafc")),
-            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor("#e2e8f0")),
-            ('BOX', (0,0), (-1,-1), 1, colors.HexColor("#cbd5e1")),
-            ('TOPPADDING', (0,0), (-1,-1), 5),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-        ]))
-        story.append(KeepTogether([t_dossier, Spacer(1, 8)]))
-
-    doc.build(story)
-    return pdf_filename
-
-# =========================================================
-# 5. ROBUST CALCULATIONS & FIXES
+# 4. ROBUST CALCULATIONS & FIXES
 # =========================================================
 dq_warnings = []
 if wacc <= term_growth:
@@ -371,7 +273,7 @@ else:
         model_signal, sig_hex = "LOWER BAND (Issuer Signal: High Bookbuilding Rejection Risk)", "#ef4444"
 
 # =========================================================
-# 6. MAIN APP TABS & VISUALIZATIONS
+# 5. MAIN APP TABS & VISUALIZATIONS
 # =========================================================
 st.markdown(f"### 📊 INSTITUTIONAL TERMINAL — `{data['ticker']}` | {selected_issuer}")
 st.caption(f"Venue: {data['venue']} | Data Source: `{data['source']}` | Timestamp: `{data['timestamp']}`")
@@ -381,7 +283,7 @@ t1, t2, t3, t4, t5 = st.tabs([
     "2. Peer Comps & Scatter Matrix",
     "3. Roadshow & Bookbuilding",
     "4. Portfolio & Issue VaR Risk",
-    "5. Model Governance & PDF Report"
+    "5. Model Governance & CSV Report"
 ])
 
 # TAB 1: FAIR VALUE LABS
@@ -577,27 +479,39 @@ with t4:
         fig_var_curve.update_layout(title=f"Maximum Portfolio Loss over {var_horizon_days}-Day Horizon", height=340)
         st.plotly_chart(fig_var_curve, use_container_width=True)
 
-# TAB 5: MODEL GOVERNANCE & PDF REPORT
+# TAB 5: MODEL GOVERNANCE & CSV REPORT
 with t5:
-    st.subheader("🛡️ Institutional Model Governance, Lineage Audit & Top-6 PDF Generator")
+    st.subheader("🛡️ Institutional Model Governance & Executive CSV Report")
     g1, g2, g3 = st.columns(3)
     g1.metric("Model Version", MODEL_VERSION)
     g2.metric("Pipeline Issuers", "6 Entities (incl. Christ University & Swiggy)")
     g3.metric("Data Status", "Verified & Audited")
 
-    st.markdown("#### 1. Generate & Download Detailed Executive PDF Report for All Top 6 Companies")
-    st.write("Click the button below to compile and download the detailed ReportLab multi-page institutional PDF report covering Zepto, Flipkart, Christ University Bangalore, Stripe, Databricks, and Swiggy.")
+    st.markdown("#### 1. Download Executive Pipeline Valuation & Summary Report (CSV)")
+    st.write("Click below to instantly download the complete institutional valuation summary and pipeline metrics as a CSV file.")
     
-    if st.button("📥 Generate & Download Detailed Top 6 Institutional PDF Report"):
-        pdf_path = generate_detailed_pdf_report()
-        with open(pdf_path, "rb") as pdf_file:
-            st.download_button(
-                label="Click here to download PDF",
-                data=pdf_file,
-                file_name="Institutional_IPO_Valuation_Terminal_Report.pdf",
-                mime="application/pdf"
-            )
-        st.success("Detailed PDF report successfully compiled for all 6 pipeline entities!")
+    summary_export_data = []
+    for issuer_name, info in IPO_PIPELINE.items():
+        summary_export_data.append({
+            "Issuer Name": issuer_name,
+            "Ticker": info["ticker"],
+            "Venue": info["venue"],
+            "LTM Revenue": info["actuals"]["ltm_rev"],
+            "LTM EBITDA": info["actuals"]["ltm_ebitda"],
+            "Net Income": info["actuals"]["net_income"],
+            "Offer Price": info["defaults"]["offer_price"],
+            "Currency": info["curr"],
+            "Source": info["source"]
+        })
+    export_df = pd.DataFrame(summary_export_data)
+    csv_data = export_df.to_csv(index=False).encode('utf-8')
+    
+    st.download_button(
+        label="📥 Download Executive Pipeline CSV Report",
+        data=csv_data,
+        file_name="Institutional_IPO_Pipeline_Report.csv",
+        mime="text/csv"
+    )
 
     st.markdown("#### 2. Historical IPO Backtesting Table")
     st.dataframe(HISTORICAL_BACKTEST, use_container_width=True, hide_index=True)
