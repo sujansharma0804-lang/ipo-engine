@@ -9,9 +9,9 @@ from datetime import datetime
 # =========================================================
 # 1. PAGE CONFIG & STYLING
 # =========================================================
-MODEL_VERSION = "v9.0.0-VALIDATED-QUANT-ENGINE"
+MODEL_VERSION = "v9.1.0-DYNAMIC-PRO"
 st.set_page_config(
-    page_title="IPO Valuation, Pricing Optimization & Risk Engine",
+    page_title="Institutional IPO Optimization & Advanced Risk Terminal",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -52,6 +52,33 @@ st.markdown("""
 # 2. ISSUER PROFILES WITH FULL PROVENANCE & QoE LEDGER
 # =========================================================
 IPO_PIPELINE = {
+    "Christ University Bangalore (Endowment Spin-off)": {
+        "ticker": "CHRISTED.NS",
+        "listing_status": "Private / Pre-IPO (Simulated)",
+        "venue": "SEBI Mainboard / Social Infrastructure",
+        "sector": "Social Infrastructure / Higher Education",
+        "curr": "₹",
+        "unit": "Cr",
+        "fx_to_usd": 0.0119,
+        "provenance": {
+            "source": "Illustrative Institutional Trust & Campus Operations Filing",
+            "period": "LTM FY26E",
+            "timestamp": "2026-11-14 22:00 IST",
+            "status": "Hypothetical / Unaudited Model Input"
+        },
+        "actuals": {
+            "ltm_rev": 1420.0, "ltm_ebitda": 465.0, "net_income": 310.0,
+            "book_value": 2450.0, "net_debt": -570.0, "shares_m": 165.0,
+            "roe": 24.8, "debt_equity": 0.05, "fcf_margin": 22.4,
+            "gmv": 1600.0, "take_rate": 95.0, "arr": 1500.0, "nrr": 128.0,
+            "rotce": 26.2, "ptbv": 3.1,
+            "non_recurring_adj": -15.0, "working_cap_change": 25.0, "cash_taxes": -35.0,
+            "capex": -95.0, "capitalized_software": 20.0, "related_party_rev_pct": 0.5,
+            "top_10_cust_conc_pct": 2.0, "annual_churn_pct": 3.2, "ar_over_90_days_pct": 1.1,
+            "contingent_liabilities": 15.0, "auditor_opinion": "Unqualified (Simulated)"
+        },
+        "defaults": {"offer_price": 280.0, "rev_growth": 16.5, "eps_growth": 18.2, "wacc": 9.75, "term_growth": 3.5, "vol": 0.18}
+    },
     "Zepto (Kiranakart Technologies)": {
         "ticker": "ZEPTO.NS",
         "listing_status": "Private / Pre-IPO (Simulated)",
@@ -61,7 +88,7 @@ IPO_PIPELINE = {
         "unit": "Cr",
         "fx_to_usd": 0.0119,
         "provenance": {
-            "source": "Illustrative DRHP Baseline & Series-G Disclosures (Simulated)",
+            "source": "Illustrative DRHP Baseline & Series-G Disclosures",
             "period": "LTM FY26E",
             "timestamp": "2026-11-14 22:00 IST",
             "status": "Hypothetical / Unaudited Model Input"
@@ -77,7 +104,7 @@ IPO_PIPELINE = {
             "top_10_cust_conc_pct": 4.2, "annual_churn_pct": 14.5, "ar_over_90_days_pct": 3.1,
             "contingent_liabilities": 120.0, "auditor_opinion": "Unqualified (Simulated)"
         },
-        "defaults": {"offer_price": 310.0, "rev_growth": 42.0, "eps_growth": 38.0, "wacc": 12.5, "term_growth": 4.0, "vol": 0.36}
+        "defaults": {"offer_price": 290.0, "rev_growth": 42.0, "eps_growth": 38.0, "wacc": 12.5, "term_growth": 4.0, "vol": 0.36}
     },
     "Flipkart Internet (India Listing)": {
         "ticker": "FLPKRT.NS",
@@ -88,7 +115,7 @@ IPO_PIPELINE = {
         "unit": "Cr",
         "fx_to_usd": 0.0119,
         "provenance": {
-            "source": "Illustrative Pre-IPO Info Memo (Simulated)",
+            "source": "Illustrative Pre-IPO Info Memo",
             "period": "LTM FY26E",
             "timestamp": "2026-11-14 22:00 IST",
             "status": "Hypothetical / Unaudited Model Input"
@@ -104,7 +131,7 @@ IPO_PIPELINE = {
             "top_10_cust_conc_pct": 2.5, "annual_churn_pct": 11.0, "ar_over_90_days_pct": 5.4,
             "contingent_liabilities": 890.0, "auditor_opinion": "Unqualified w/ Emphasis of Matter (Simulated)"
         },
-        "defaults": {"offer_price": 1220.0, "rev_growth": 24.0, "eps_growth": 27.5, "wacc": 11.25, "term_growth": 3.5, "vol": 0.27}
+        "defaults": {"offer_price": 1150.0, "rev_growth": 24.0, "eps_growth": 27.5, "wacc": 11.25, "term_growth": 3.5, "vol": 0.27}
     },
     "Stripe Inc.": {
         "ticker": "STRP",
@@ -115,7 +142,7 @@ IPO_PIPELINE = {
         "unit": "M",
         "fx_to_usd": 1.0,
         "provenance": {
-            "source": "Illustrative SEC S-1 Draft Baseline (Simulated)",
+            "source": "Illustrative SEC S-1 Draft Baseline",
             "period": "LTM Q3 2026E",
             "timestamp": "2026-11-14 22:00 IST",
             "status": "Hypothetical / Unaudited Model Input"
@@ -131,7 +158,7 @@ IPO_PIPELINE = {
             "top_10_cust_conc_pct": 14.2, "annual_churn_pct": 5.2, "ar_over_90_days_pct": 1.8,
             "contingent_liabilities": 180.0, "auditor_opinion": "Unqualified (Simulated)"
         },
-        "defaults": {"offer_price": 62.0, "rev_growth": 26.0, "eps_growth": 29.0, "wacc": 10.0, "term_growth": 3.0, "vol": 0.25}
+        "defaults": {"offer_price": 58.0, "rev_growth": 26.0, "eps_growth": 29.0, "wacc": 10.0, "term_growth": 3.0, "vol": 0.25}
     },
     "Databricks Inc.": {
         "ticker": "DBRX",
@@ -142,7 +169,7 @@ IPO_PIPELINE = {
         "unit": "M",
         "fx_to_usd": 1.0,
         "provenance": {
-            "source": "Illustrative SEC S-1 Registration Baseline (Simulated)",
+            "source": "Illustrative SEC S-1 Registration Baseline",
             "period": "LTM Q3 2026E",
             "timestamp": "2026-11-14 22:00 IST",
             "status": "Hypothetical / Unaudited Model Input"
@@ -158,7 +185,7 @@ IPO_PIPELINE = {
             "top_10_cust_conc_pct": 18.5, "annual_churn_pct": 4.1, "ar_over_90_days_pct": 2.2,
             "contingent_liabilities": 45.0, "auditor_opinion": "Unqualified (Simulated)"
         },
-        "defaults": {"offer_price": 84.0, "rev_growth": 48.0, "eps_growth": 44.0, "wacc": 11.0, "term_growth": 3.5, "vol": 0.33}
+        "defaults": {"offer_price": 78.0, "rev_growth": 48.0, "eps_growth": 44.0, "wacc": 11.0, "term_growth": 3.5, "vol": 0.33}
     },
     "Swiggy Limited (Listed Benchmark)": {
         "ticker": "SWIGGY.NS",
@@ -169,10 +196,10 @@ IPO_PIPELINE = {
         "unit": "Cr",
         "fx_to_usd": 0.0119,
         "provenance": {
-            "source": "Exchange Filings & Public Post-IPO Disclosures (Illustrative)",
+            "source": "Exchange Filings & Public Post-IPO Disclosures",
             "period": "LTM FY26",
             "timestamp": "2026-11-14 22:00 IST",
-            "status": "Public Benchmark (Normalized for Comparison)"
+            "status": "Public Benchmark"
         },
         "actuals": {
             "ltm_rev": 14800.0, "ltm_ebitda": 920.0, "net_income": 610.0,
@@ -186,33 +213,6 @@ IPO_PIPELINE = {
             "contingent_liabilities": 210.0, "auditor_opinion": "Unqualified"
         },
         "defaults": {"offer_price": 390.0, "rev_growth": 28.0, "eps_growth": 25.0, "wacc": 11.8, "term_growth": 3.5, "vol": 0.31}
-    },
-    "HDFC / ICICI Banking Peer Benchmark": {
-        "ticker": "BANKPEER.NS",
-        "listing_status": "Publicly Listed (NSE/BSE)",
-        "venue": "SEBI / NSE (India)",
-        "sector": "Commercial Banking / Financial Services",
-        "curr": "₹",
-        "unit": "Cr",
-        "fx_to_usd": 0.0119,
-        "provenance": {
-            "source": "Scheduled Commercial Bank Public Filings (Illustrative)",
-            "period": "LTM FY26",
-            "timestamp": "2026-11-14 22:00 IST",
-            "status": "Public Benchmark (Banking Framework)"
-        },
-        "actuals": {
-            "ltm_rev": 85000.0, "ltm_ebitda": 42000.0, "net_income": 28500.0,
-            "book_value": 195000.0, "net_debt": 0.0, "shares_m": 3500.0,
-            "roe": 16.8, "debt_equity": 6.2, "fcf_margin": 28.0,
-            "gmv": 0.0, "take_rate": 0.0, "arr": 0.0, "nrr": 108.0,
-            "rotce": 18.2, "ptbv": 2.45,
-            "non_recurring_adj": -410.0, "working_cap_change": 1200.0, "cash_taxes": -7200.0,
-            "capex": -1800.0, "capitalized_software": 450.0, "related_party_rev_pct": 0.8,
-            "top_10_cust_conc_pct": 6.5, "annual_churn_pct": 3.5, "ar_over_90_days_pct": 1.4,
-            "contingent_liabilities": 4500.0, "auditor_opinion": "Unqualified"
-        },
-        "defaults": {"offer_price": 138.0, "rev_growth": 15.0, "eps_growth": 16.5, "wacc": 10.5, "term_growth": 4.0, "vol": 0.21}
     }
 }
 
@@ -224,13 +224,7 @@ st.sidebar.caption(f"Validated Framework | `{MODEL_VERSION}`")
 
 selected_issuer = st.sidebar.selectbox("Select Target Issuer", list(IPO_PIPELINE.keys()))
 data = IPO_PIPELINE[selected_issuer]
-curr = data["curr"]
-unit = data["unit"]
-act = data["actuals"]
-defs = data["defaults"]
-tk = data["ticker"]
-sector = data["sector"]
-prov = data["provenance"]
+curr, unit, act, defs, tk, sector, prov = data["curr"], data["unit"], data["actuals"], data["defaults"], data["ticker"], data["sector"], data["provenance"]
 
 perspective = st.sidebar.radio(
     "Analytical Role",
@@ -285,7 +279,6 @@ eps_fwd = eps_ttm * (1.0 + eps_growth / 100.0)
 bvps = act["book_value"] / act["shares_m"]
 rotce = act["rotce"]
 roe = act["roe"]
-ptbv = act["ptbv"]
 arr = act["arr"]
 nrr = act["nrr"]
 
@@ -299,28 +292,30 @@ dcf_fair_price = max(dcf_eq / act["shares_m"], 1.0)
 
 growth_premium = 1.0 + ((rev_growth - 20.0) / 100.0)
 
-if "Banking" in sector or "Financial" in sector:
-    implied_ptbv = max(ptbv * (rotce / 15.0) * growth_premium, 1.0)
-    m1_name, m1_val = "P/TBV (ROTCE-Adjusted)", bvps * implied_ptbv
-    m2_name, m2_val = "P/B (ROE Multiple)", bvps * (roe / 12.0) * 1.8
-    m3_name, m3_val = "Forward P/E (14x Peer)", eps_fwd * 14.0
-    val_methods = [(m1_name, m1_val, 0.45), (m2_name, m2_val, 0.35), (m3_name, m3_val, 0.20)]
+if "Social" in sector or "Infrastructure" in sector or "Banking" in sector:
+    implied_ptbv = max(act["ptbv"] * (rotce / 15.0) * growth_premium, 1.2)
+    val_methods = [
+        ("P/TBV Multiple", bvps * implied_ptbv, 0.40),
+        ("Economic FCF DCF", dcf_fair_price, 0.40),
+        ("Forward P/E (18x)", eps_fwd * 18.0, 0.20)
+    ]
 elif "SaaS" in sector or "Cloud" in sector or "Fintech" in sector:
     arr_fwd = arr * (1.0 + rev_growth / 100.0)
-    rule_of_40 = rev_growth + act["fcf_margin"]
-    arr_mult = max(4.0, min(18.0, (rule_of_40 / 10.0) * (nrr / 100.0) * 1.8))
-    m1_name, m1_val = f"EV/ARR ({arr_mult:.1f}x NRR-Adj)", ((arr_fwd * arr_mult) - act["net_debt"]) / act["shares_m"]
-    m2_name, m2_val = "Economic FCF DCF", dcf_fair_price
-    m3_name, m3_val = "Forward P/E (28x Growth)", eps_fwd * 28.0
-    val_methods = [(m1_name, m1_val, 0.45), (m2_name, m2_val, 0.35), (m3_name, m3_val, 0.20)]
+    arr_mult = max(4.0, min(18.0, ((rev_growth + act["fcf_margin"]) / 10.0) * (nrr / 100.0) * 1.8))
+    val_methods = [
+        (f"EV/ARR ({arr_mult:.1f}x)", ((arr_fwd * arr_mult) - act["net_debt"]) / act["shares_m"], 0.45),
+        ("Economic FCF DCF", dcf_fair_price, 0.35),
+        ("Forward P/E (28x)", eps_fwd * 28.0, 0.20)
+    ]
 else:
     gmv_fwd = act["gmv"] * (1.0 + rev_growth / 100.0)
     net_rev_fwd = gmv_fwd * (act["take_rate"] / 100.0)
     ev_rev_mult = max(2.0, min(8.0, 4.0 * growth_premium))
-    m1_name, m1_val = f"EV/Net Rev ({ev_rev_mult:.1f}x Take-Rate)", ((net_rev_fwd * ev_rev_mult) - act["net_debt"]) / act["shares_m"]
-    m2_name, m2_val = "Economic FCF DCF", dcf_fair_price
-    m3_name, m3_val = "Forward P/E (24x Peer)", eps_fwd * 24.0
-    val_methods = [(m1_name, m1_val, 0.40), (m2_name, m2_val, 0.40), (m3_name, m3_val, 0.20)]
+    val_methods = [
+        (f"EV/Net Rev ({ev_rev_mult:.1f}x)", ((net_rev_fwd * ev_rev_mult) - act["net_debt"]) / act["shares_m"], 0.40),
+        ("Economic FCF DCF", dcf_fair_price, 0.40),
+        ("Forward P/E (22x)", eps_fwd * 22.0, 0.20)
+    ]
 
 qoe_haircut_factor = 1.0 - ((100.0 - qoe_score) * 0.0025)
 raw_blended_fv = sum([val * wt for _, val, wt in val_methods])
@@ -432,6 +427,7 @@ t1, t2, t3, t4, t5 = st.tabs([
     "5. Audit Trail & IC Report Generator"
 ])
 
+# TAB 1: OFFER PRICE OPTIMIZER & FAIR VALUE
 with t1:
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Proposed Offer Price", f"{curr}{offer_price:,.2f}", f"Optimal: {curr}{opt_price:,.2f}")
@@ -485,6 +481,7 @@ with t1:
             f"- **Expected Subscription Coverage:** `{opt_df.loc[best_idx, 'Coverage']:.2f}x` | **Expected Listing Pop:** `{opt_df.loc[best_idx, 'ExpectedPop']:+.1f}%`"
         )
 
+# TAB 2: QoE & CASH FLOW
 with t2:
     st.subheader(f"🔍 Quality of Earnings (QoE) & Cash Conversion Audit — {selected_issuer}")
     q1, q2, q3, q4 = st.columns(4)
@@ -524,6 +521,7 @@ with t2:
         ])
         st.dataframe(forensic_df, use_container_width=True, hide_index=True)
 
+# TAB 3: PEER UNIVERSE & SENSITIVITY
 with t3:
     st.subheader("🌐 Normalized Peer Universe (USD-Converted) & Sensitivity Matrix")
     st.caption("All market caps converted to USD Millions using standard FX normalization so INR and USD issuers can be compared cleanly, with Private vs. Public status explicitly separated.")
@@ -566,6 +564,7 @@ with t3:
         matrix_data.append(row_dict)
     st.dataframe(pd.DataFrame(matrix_data), use_container_width=True, hide_index=True)
 
+# TAB 4: RISK, VaR & STRESS
 with t4:
     st.subheader(f"🛡️ Risk Engine, Stress Scenarios & Kupiec Backtest ({var_horizon_days}-Day, {var_conf*100:.0f}% Conf)")
     
@@ -599,6 +598,7 @@ with t4:
         fig_bt.update_layout(title=f"VaR Exception Backtest ({exceptions_count} Breaches vs {expected_exceptions} Expected)", height=320, margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig_bt, use_container_width=True)
 
+# TAB 5: AUDIT TRAIL & IC REPORT
 with t5:
     st.subheader("📑 Data Provenance Ledger & Investment Committee (IC) Report")
     
