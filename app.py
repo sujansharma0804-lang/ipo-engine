@@ -9,7 +9,7 @@ from datetime import datetime
 # =========================================================
 # 1. PAGE CONFIG & INSTITUTIONAL STYLING
 # =========================================================
-MODEL_VERSION = "v8.0.0-QUANT-OPTIMIZER-VARENGINE"
+MODEL_VERSION = "v8.1.0-FLAWLESS-PRO"
 st.set_page_config(
     page_title="Institutional IPO Optimization & Advanced Risk Terminal",
     layout="wide",
@@ -53,30 +53,13 @@ IPO_PIPELINE = {
         "source": "DRHP Filing & Series-G Audited Disclosures",
         "timestamp": "2026-09-30",
         "actuals": {
-            "ltm_rev": 11200.0,
-            "ltm_ebitda": 480.0,
-            "net_income": 290.0,
-            "book_value": 4800.0,
-            "net_debt": -2650.0,
-            "shares_m": 665.0,
-            "roe": 12.4,
-            "debt_equity": 0.09,
-            "fcf_margin": 8.5,
-            "gmv": 24000.0,
-            "take_rate": 18.5,
-            "arr": 13500.0,
-            "nrr": 118.0,
-            "rotce": 14.2,
-            "ptbv": 5.8
+            "ltm_rev": 11200.0, "ltm_ebitda": 480.0, "net_income": 290.0,
+            "book_value": 4800.0, "net_debt": -2650.0, "shares_m": 665.0,
+            "roe": 12.4, "debt_equity": 0.09, "fcf_margin": 8.5,
+            "gmv": 24000.0, "take_rate": 18.5, "arr": 13500.0, "nrr": 118.0,
+            "rotce": 14.2, "ptbv": 5.8
         },
-        "defaults": {
-            "offer_price": 310.0,
-            "rev_growth": 42.0,
-            "eps_growth": 38.0,
-            "wacc": 12.5,
-            "term_growth": 4.0,
-            "vol": 0.36
-        }
+        "defaults": {"offer_price": 310.0, "rev_growth": 42.0, "eps_growth": 38.0, "wacc": 12.5, "term_growth": 4.0, "vol": 0.36}
     },
     "Flipkart Internet (India Listing)": {
         "ticker": "FLPKRT.NS",
@@ -87,30 +70,13 @@ IPO_PIPELINE = {
         "source": "Pre-IPO Information Memorandum & FY26 Audited",
         "timestamp": "2026-08-31",
         "actuals": {
-            "ltm_rev": 68500.0,
-            "ltm_ebitda": 6150.0,
-            "net_income": 4350.0,
-            "book_value": 34200.0,
-            "net_debt": -5600.0,
-            "shares_m": 1280.0,
-            "roe": 18.6,
-            "debt_equity": 0.14,
-            "fcf_margin": 9.2,
-            "gmv": 195000.0,
-            "take_rate": 14.0,
-            "arr": 72000.0,
-            "nrr": 115.0,
-            "rotce": 19.5,
-            "ptbv": 4.2
+            "ltm_rev": 68500.0, "ltm_ebitda": 6150.0, "net_income": 4350.0,
+            "book_value": 34200.0, "net_debt": -5600.0, "shares_m": 1280.0,
+            "roe": 18.6, "debt_equity": 0.14, "fcf_margin": 9.2,
+            "gmv": 195000.0, "take_rate": 14.0, "arr": 72000.0, "nrr": 115.0,
+            "rotce": 19.5, "ptbv": 4.2
         },
-        "defaults": {
-            "offer_price": 1220.0,
-            "rev_growth": 24.0,
-            "eps_growth": 27.5,
-            "wacc": 11.25,
-            "term_growth": 3.5,
-            "vol": 0.27
-        }
+        "defaults": {"offer_price": 1220.0, "rev_growth": 24.0, "eps_growth": 27.5, "wacc": 11.25, "term_growth": 3.5, "vol": 0.27}
     },
     "Christ University Bangalore (Endowment Spin-off)": {
         "ticker": "CHRISTED.NS",
@@ -121,30 +87,13 @@ IPO_PIPELINE = {
         "source": "Audited Institutional Trust & Campus Operations Filing",
         "timestamp": "2026-10-15",
         "actuals": {
-            "ltm_rev": 1420.0,
-            "ltm_ebitda": 465.0,
-            "net_income": 310.0,
-            "book_value": 2450.0,
-            "net_debt": -570.0,
-            "shares_m": 165.0,
-            "roe": 24.8,
-            "debt_equity": 0.05,
-            "fcf_margin": 22.4,
-            "gmv": 1600.0,
-            "take_rate": 95.0,
-            "arr": 1500.0,
-            "nrr": 128.0,
-            "rotce": 26.2,
-            "ptbv": 3.1
+            "ltm_rev": 1420.0, "ltm_ebitda": 465.0, "net_income": 310.0,
+            "book_value": 2450.0, "net_debt": -570.0, "shares_m": 165.0,
+            "roe": 24.8, "debt_equity": 0.05, "fcf_margin": 22.4,
+            "gmv": 1600.0, "take_rate": 95.0, "arr": 1500.0, "nrr": 128.0,
+            "rotce": 26.2, "ptbv": 3.1
         },
-        "defaults": {
-            "offer_price": 435.0,
-            "rev_growth": 16.5,
-            "eps_growth": 18.2,
-            "wacc": 9.75,
-            "term_growth": 3.5,
-            "vol": 0.18
-        }
+        "defaults": {"offer_price": 435.0, "rev_growth": 16.5, "eps_growth": 18.2, "wacc": 9.75, "term_growth": 3.5, "vol": 0.18}
     },
     "Stripe Inc.": {
         "ticker": "STRP",
@@ -155,30 +104,13 @@ IPO_PIPELINE = {
         "source": "SEC Form S-1 Draft & Tender Valuation Disclosure",
         "timestamp": "2026-09-30",
         "actuals": {
-            "ltm_rev": 18400.0,
-            "ltm_ebitda": 3850.0,
-            "net_income": 2410.0,
-            "book_value": 16800.0,
-            "net_debt": -4200.0,
-            "shares_m": 1240.0,
-            "roe": 28.4,
-            "debt_equity": 0.12,
-            "fcf_margin": 19.5,
-            "gmv": 1100000.0,
-            "take_rate": 1.8,
-            "arr": 20500.0,
-            "nrr": 122.0,
-            "rotce": 31.0,
-            "ptbv": 7.5
+            "ltm_rev": 18400.0, "ltm_ebitda": 3850.0, "net_income": 2410.0,
+            "book_value": 16800.0, "net_debt": -4200.0, "shares_m": 1240.0,
+            "roe": 28.4, "debt_equity": 0.12, "fcf_margin": 19.5,
+            "gmv": 1100000.0, "take_rate": 1.8, "arr": 20500.0, "nrr": 122.0,
+            "rotce": 31.0, "ptbv": 7.5
         },
-        "defaults": {
-            "offer_price": 62.0,
-            "rev_growth": 26.0,
-            "eps_growth": 29.0,
-            "wacc": 10.0,
-            "term_growth": 3.0,
-            "vol": 0.25
-        }
+        "defaults": {"offer_price": 62.0, "rev_growth": 26.0, "eps_growth": 29.0, "wacc": 10.0, "term_growth": 3.0, "vol": 0.25}
     },
     "Databricks Inc.": {
         "ticker": "DBRX",
@@ -189,30 +121,13 @@ IPO_PIPELINE = {
         "source": "SEC Form S-1 Registration & ARR Audit",
         "timestamp": "2026-10-01",
         "actuals": {
-            "ltm_rev": 3250.0,
-            "ltm_ebitda": 680.0,
-            "net_income": 440.0,
-            "book_value": 6400.0,
-            "net_debt": -1750.0,
-            "shares_m": 635.0,
-            "roe": 19.5,
-            "debt_equity": 0.08,
-            "fcf_margin": 14.2,
-            "gmv": 3600.0,
-            "take_rate": 90.0,
-            "arr": 3800.0,
-            "nrr": 138.0,
-            "rotce": 21.0,
-            "ptbv": 6.2
+            "ltm_rev": 3250.0, "ltm_ebitda": 680.0, "net_income": 440.0,
+            "book_value": 6400.0, "net_debt": -1750.0, "shares_m": 635.0,
+            "roe": 19.5, "debt_equity": 0.08, "fcf_margin": 14.2,
+            "gmv": 3600.0, "take_rate": 90.0, "arr": 3800.0, "nrr": 138.0,
+            "rotce": 21.0, "ptbv": 6.2
         },
-        "defaults": {
-            "offer_price": 84.0,
-            "rev_growth": 48.0,
-            "eps_growth": 44.0,
-            "wacc": 11.0,
-            "term_growth": 3.5,
-            "vol": 0.33
-        }
+        "defaults": {"offer_price": 84.0, "rev_growth": 48.0, "eps_growth": 44.0, "wacc": 11.0, "term_growth": 3.5, "vol": 0.33}
     },
     "Swiggy Limited (Post-Listing Benchmark)": {
         "ticker": "SWIGGY.NS",
@@ -223,30 +138,13 @@ IPO_PIPELINE = {
         "source": "Post-Listing Financial Disclosures & Exchange Filings",
         "timestamp": "2026-11-01",
         "actuals": {
-            "ltm_rev": 14800.0,
-            "ltm_ebitda": 920.0,
-            "net_income": 610.0,
-            "book_value": 9200.0,
-            "net_debt": -4100.0,
-            "shares_m": 2220.0,
-            "roe": 11.4,
-            "debt_equity": 0.06,
-            "fcf_margin": 6.8,
-            "gmv": 32000.0,
-            "take_rate": 22.0,
-            "arr": 16000.0,
-            "nrr": 114.0,
-            "rotce": 13.5,
-            "ptbv": 3.8
+            "ltm_rev": 14800.0, "ltm_ebitda": 920.0, "net_income": 610.0,
+            "book_value": 9200.0, "net_debt": -4100.0, "shares_m": 2220.0,
+            "roe": 11.4, "debt_equity": 0.06, "fcf_margin": 6.8,
+            "gmv": 32000.0, "take_rate": 22.0, "arr": 16000.0, "nrr": 114.0,
+            "rotce": 13.5, "ptbv": 3.8
         },
-        "defaults": {
-            "offer_price": 390.0,
-            "rev_growth": 28.0,
-            "eps_growth": 25.0,
-            "wacc": 11.8,
-            "term_growth": 3.5,
-            "vol": 0.31
-        }
+        "defaults": {"offer_price": 390.0, "rev_growth": 28.0, "eps_growth": 25.0, "wacc": 11.8, "term_growth": 3.5, "vol": 0.31}
     }
 }
 
@@ -280,33 +178,11 @@ perspective = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**🧪 [VALUATION & GROWTH ASSUMPTIONS]**")
-offer_price = st.sidebar.number_input(
-    f"Proposed IPO Offer Price ({curr})",
-    min_value=1.0,
-    value=float(defs["offer_price"]),
-    step=5.0,
-    key=f"offer_{tk}"
-)
-rev_growth = st.sidebar.slider(
-    "Projected Revenue Growth (%)",
-    5.0, 65.0, float(defs["rev_growth"]), 0.5,
-    key=f"rev_{tk}"
-)
-eps_growth = st.sidebar.slider(
-    "Projected EPS Growth (%)",
-    5.0, 65.0, float(defs["eps_growth"]), 0.5,
-    key=f"eps_{tk}"
-)
-wacc = st.sidebar.slider(
-    "Discount Rate / WACC (%)",
-    6.5, 18.0, float(defs["wacc"]), 0.25,
-    key=f"wacc_{tk}"
-)
-term_growth = st.sidebar.slider(
-    "Terminal Growth Rate (%)",
-    1.5, 5.5, float(defs["term_growth"]), 0.25,
-    key=f"tg_{tk}"
-)
+offer_price = st.sidebar.number_input(f"Proposed IPO Offer Price ({curr})", min_value=1.0, value=float(defs["offer_price"]), step=5.0, key=f"offer_{tk}")
+rev_growth = st.sidebar.slider("Projected Revenue Growth (%)", 5.0, 65.0, float(defs["rev_growth"]), 0.5, key=f"rev_{tk}")
+eps_growth = st.sidebar.slider("Projected EPS Growth (%)", 5.0, 65.0, float(defs["eps_growth"]), 0.5, key=f"eps_{tk}")
+wacc = st.sidebar.slider("Discount Rate / WACC (%)", 6.5, 18.0, float(defs["wacc"]), 0.25, key=f"wacc_{tk}")
+term_growth = st.sidebar.slider("Terminal Growth Rate (%)", 1.5, 5.5, float(defs["term_growth"]), 0.25, key=f"tg_{tk}")
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("**🛡️ [DEFENSIBLE RISK & VaR ASSUMPTIONS]**")
@@ -331,7 +207,6 @@ ptbv = act["ptbv"]
 arr = act["arr"]
 nrr = act["nrr"]
 
-# Multi-Stage DCF
 fcf_0 = act["ltm_rev"] * (act["fcf_margin"] / 100.0)
 pv_fcfs = sum([(fcf_0 * ((1.0 + rev_growth / 100.0) ** t)) / ((1.0 + wacc / 100.0) ** t) for t in range(1, 6)])
 tv_5 = (fcf_0 * ((1.0 + rev_growth / 100.0) ** 5) * (1.0 + term_growth / 100.0)) / ((wacc - term_growth) / 100.0)
@@ -340,18 +215,15 @@ dcf_ev = pv_fcfs + pv_tv
 dcf_eq = dcf_ev - act["net_debt"]
 dcf_fair_price = max(dcf_eq / act["shares_m"], 1.0)
 
-# Sector-Tailored Fair Value Methodologies
 growth_premium = 1.0 + ((rev_growth - 20.0) / 100.0)
 
 if "Infrastructure" in sector or "Financial" in sector or "Bank" in sector:
-    # Financial / Infrastructure Model: P/TBV, P/B, ROTCE, ROE
     implied_ptbv = max(ptbv * (rotce / 15.0) * growth_premium, 1.2)
     fv_sector1 = bvps * implied_ptbv
     fv_sector2 = bvps * (roe / 12.0) * 3.2
     fv_sector3 = dcf_fair_price * 1.05
     fv_sector4 = eps_ttm * 18.5
 elif "SaaS" in sector or "Cloud" in sector or "Enterprise" in sector or "Fintech" in sector:
-    # SaaS / Tech Model: ARR Growth, NRR, EV/ARR
     arr_fwd = arr * (1.0 + rev_growth / 100.0)
     arr_multiple = 12.0 * (nrr / 100.0) * growth_premium
     ev_arr_val = (arr_fwd * arr_multiple - act["net_debt"]) / act["shares_m"]
@@ -360,7 +232,6 @@ elif "SaaS" in sector or "Cloud" in sector or "Enterprise" in sector or "Fintech
     fv_sector3 = dcf_fair_price
     fv_sector4 = bvps * 6.5
 else:
-    # Consumer / Marketplace / E-commerce Model: GMV Take-Rate & FCF
     gmv_fwd = act["gmv"] * (1.0 + rev_growth / 100.0)
     net_rev_fwd = gmv_fwd * (act["take_rate"] / 100.0)
     ev_rev_val = ((net_rev_fwd * 5.5 * growth_premium) - act["net_debt"]) / act["shares_m"]
@@ -384,17 +255,14 @@ opt_scores = []
 opt_details = []
 
 shares_total = act["shares_m"]
-primary_shares_offered = shares_total * 0.20  # 20% primary dilution
+primary_shares_offered = shares_total * 0.20
 
 for p in price_grid:
     proceeds = p * primary_shares_offered
-    dilution_pct = 20.0
     valuation_discount = ((blended_fair_value - p) / blended_fair_value) * 100.0
-    
     base_coverage = 2.4 - (valuation_discount / 15.0)
     coverage = max(0.8, min(5.5, base_coverage))
     expected_pop = max(-10.0, valuation_discount * 0.65)
-    
     downside_risk = abs(min(0.0, valuation_discount)) + (p / blended_fair_value * 12.0)
     execution_feasibility = max(10.0, min(100.0, 100.0 - abs(valuation_discount) * 2.2 + (coverage - 1.0) * 15.0))
     
@@ -406,50 +274,31 @@ for p in price_grid:
     score = (0.25 * norm_proceeds) + (0.25 * norm_coverage) + (0.25 * norm_feasibility) + (0.25 * norm_downside)
     opt_scores.append(score)
     opt_details.append({
-        "Price": p,
-        "Proceeds": proceeds,
-        "Coverage": coverage,
-        "Feasibility": execution_feasibility,
-        "ValDiscount": valuation_discount,
-        "ExpectedPop": expected_pop,
-        "Score": score
+        "Price": p, "Proceeds": proceeds, "Coverage": coverage,
+        "Feasibility": execution_feasibility, "ValDiscount": valuation_discount,
+        "ExpectedPop": expected_pop, "Score": score
     })
 
 opt_df = pd.DataFrame(opt_details)
 best_idx = np.argmax(opt_scores)
 optimal_recommended_price = opt_df.loc[best_idx, "Price"]
 
-# Signal Calibration
 if "Investor" in perspective:
     if upside_pct >= 12.0:
-        model_signal = "STRONG BUY — Compelling Underpricing & High Margin of Safety"
-        sig_hex = "#10b981"
-        sig_bg = "rgba(16, 185, 129, 0.12)"
+        model_signal, sig_hex, sig_bg = "STRONG BUY — Compelling Underpricing & High Margin of Safety", "#10b981", "rgba(16, 185, 129, 0.12)"
     elif upside_pct >= 3.0:
-        model_signal = "ACCUMULATE / BUY — Modest Listing Upside Supported by Earnings Quality"
-        sig_hex = "#059669"
-        sig_bg = "rgba(5, 150, 105, 0.12)"
+        model_signal, sig_hex, sig_bg = "ACCUMULATE / BUY — Modest Listing Upside Supported by Earnings Quality", "#059669", "rgba(5, 150, 105, 0.12)"
     elif upside_pct >= -7.0:
-        model_signal = "HOLD / NEUTRAL — Fairly Valued Within Institutional Target Band"
-        sig_hex = "#f59e0b"
-        sig_bg = "rgba(245, 158, 11, 0.12)"
+        model_signal, sig_hex, sig_bg = "HOLD / NEUTRAL — Fairly Valued Within Institutional Target Band", "#f59e0b", "rgba(245, 158, 11, 0.12)"
     else:
-        model_signal = "SELL / AVOID — Offer Price Exceeds Intrinsic Valuation Ceiling"
-        sig_hex = "#ef4444"
-        sig_bg = "rgba(239, 68, 68, 0.12)"
+        model_signal, sig_hex, sig_bg = "SELL / AVOID — Offer Price Exceeds Intrinsic Valuation Ceiling", "#ef4444", "rgba(239, 68, 68, 0.12)"
 else:
     if abs(offer_price - optimal_recommended_price) <= offer_price * 0.05:
-        model_signal = "OPTIMAL SYNDICATE PRICING — Perfectly Balances Proceeds & Bookbuilding Coverage"
-        sig_hex = "#10b981"
-        sig_bg = "rgba(16, 185, 129, 0.12)"
+        model_signal, sig_hex, sig_bg = "OPTIMAL SYNDICATE PRICING — Perfectly Balances Proceeds & Bookbuilding Coverage", "#10b981", "rgba(16, 185, 129, 0.12)"
     elif offer_price < optimal_recommended_price:
-        model_signal = "RE-PRICE UPWARD — Leaving Capital on the Table; Book Coverage Highly Robust"
-        sig_hex = "#f59e0b"
-        sig_bg = "rgba(245, 158, 11, 0.12)"
+        model_signal, sig_hex, sig_bg = "RE-PRICE UPWARD — Leaving Capital on the Table; Book Coverage Highly Robust", "#f59e0b", "rgba(245, 158, 11, 0.12)"
     else:
-        model_signal = "LOWER PRICE BAND — High Risk of Under-subscription and Syndicate Failure"
-        sig_hex = "#ef4444"
-        sig_bg = "rgba(239, 68, 68, 0.12)"
+        model_signal, sig_hex, sig_bg = "LOWER PRICE BAND — High Risk of Under-subscription and Syndicate Failure", "#ef4444", "rgba(239, 68, 68, 0.12)"
 
 # =========================================================
 # 6. ADVANCED DEFENSIBLE RISK & VaR CALCULATIONS
@@ -460,29 +309,24 @@ n_sims = 10000
 sigma_d = defs["vol"] / np.sqrt(252)
 mu_d = 0.06 / 252
 
-# Parametric VaR
 z_score = norm.ppf(var_conf)
 param_var = init_alloc * (sigma_d * np.sqrt(var_horizon_days) * z_score - mu_d * var_horizon_days)
 
-# Historical Simulation VaR & Expected Shortfall (CVaR)
 hist_returns = rng_var.normal(mu_d * var_horizon_days, sigma_d * np.sqrt(var_horizon_days), n_sims)
 hist_losses = init_alloc - (init_alloc * np.exp(hist_returns))
 hist_var = np.percentile(hist_losses, var_conf * 100)
 cvar = np.mean(hist_losses[hist_losses >= hist_var])
 
-# Monte Carlo VaR with Fat-Tail Student-t distribution
 t_samples = t.rvs(df=tail_df, size=n_sims, random_state=rng_var)
 fat_tail_returns = mu_d * var_horizon_days + (sigma_d * np.sqrt(var_horizon_days) * t_samples * np.sqrt((tail_df - 2) / tail_df))
 mc_losses = init_alloc - (init_alloc * np.exp(fat_tail_returns))
 mc_var = np.percentile(mc_losses, var_conf * 100)
 
-# Stressed VaR & Correlation Breakdown
 stressed_sigma = sigma_d * stress_mult
 stressed_returns = rng_var.normal(mu_d * var_horizon_days, stressed_sigma * np.sqrt(var_horizon_days), n_sims)
 stressed_losses = init_alloc - (init_alloc * np.exp(stressed_returns))
 stressed_var = np.percentile(stressed_losses, var_conf * 100)
 
-# Max Drawdown & Liquidity-Adjusted Downside
 max_dd_sims = np.maximum(0.0, rng_var.exponential(scale=sigma_d * 4.5 * np.sqrt(var_horizon_days), size=n_sims))
 max_drawdown_pct = np.percentile(max_dd_sims * 100.0, 95.0)
 liquidity_adj_haircut = init_alloc * 0.045
@@ -502,9 +346,7 @@ t1, t2, t3, t4, t5 = st.tabs([
     "5. Governance, Backtest & IC Memo"
 ])
 
-# =========================================================
-# TAB 1: OFFER PRICE OPTIMIZER & QUALITY OF EARNINGS
-# =========================================================
+# TAB 1: OFFER PRICE OPTIMIZER & QoE
 with t1:
     c1, c2, c3, c4, c5 = st.columns([1.15, 1.15, 1.15, 1.25, 1.0])
     with c1:
@@ -526,52 +368,35 @@ with t1:
 
     opt_left, opt_right = st.columns([1.1, 1.15], gap="large")
     with opt_left:
-        st.markdown("#### ⚖️ Price Optimization Curve (Balancing 8 Key Variables)")
-        fig_opt = px.line(
-            opt_df, x="Price", y="Score",
-            title="Composite Optimization Score vs. Offer Price",
-            labels={"Price": f"Offer Price ({curr})", "Score": "Optimization Score"}
-        )
-        fig_opt.add_vline(
-            x=optimal_recommended_price, line_dash="dash", line_color="#10b981",
-            annotation_text=f"Optimal: {curr}{optimal_recommended_price:.1f}"
-        )
-        fig_opt.add_vline(
-            x=offer_price, line_dash="dot", line_color="#ef4444",
-            annotation_text=f"Current: {curr}{offer_price:.1f}"
-        )
+        st.markdown("#### ⚖️ Price Optimization Curve")
+        fig_opt = px.line(opt_df, x="Price", y="Score", title="Composite Optimization Score vs. Offer Price")
+        fig_opt.add_vline(x=optimal_recommended_price, line_dash="dash", line_color="#10b981")
+        fig_opt.add_vline(x=offer_price, line_dash="dot", line_color="#ef4444")
         fig_opt.update_layout(height=320, margin=dict(l=20, r=20, t=40, b=20))
         st.plotly_chart(fig_opt, use_container_width=True)
 
-        st.markdown("#### 🔍 Quality of Earnings (QoE) & Sector Metrics")
+        st.markdown("#### 🔍 Quality of Earnings (QoE)")
         qoe_rows = [
-            {"Metric": "Sector Classification", "Value": sector, "Assessment": "Targeted Framework Applied"},
-            {"Metric": "LTM Revenue & EBITDA", "Value": f"{curr}{act['ltm_rev']:,.1f} {unit} / {curr}{act['ltm_ebitda']:,.1f}", "Assessment": "Audited & Verified"},
-            {"Metric": "Free Cash Flow Margin", "Value": f"{act['fcf_margin']:.1f}%", "Assessment": "High Cash Conversion"},
-            {"Metric": "Return on Tangible Capital (ROTCE)", "Value": f"{rotce:.1f}%", "Assessment": "Strong Capital Efficiency"},
-            {"Metric": "Annual Recurring Revenue (ARR)", "Value": f"{curr}{arr:,.1f} {unit}", "Assessment": "High Visibility Stream"},
-            {"Metric": "Net Revenue Retention (NRR)", "Value": f"{nrr:.1f}%", "Assessment": "Best-in-Class Expansion"}
+            {"Metric": "Sector Classification", "Value": sector, "Assessment": "Targeted Framework"},
+            {"Metric": "LTM Revenue / EBITDA", "Value": f"{curr}{act['ltm_rev']:,.1f} {unit} / {curr}{act['ltm_ebitda']:,.1f}", "Assessment": "Audited"},
+            {"Metric": "Free Cash Flow Margin", "Value": f"{act['fcf_margin']:.1f}%", "Assessment": "High Conversion"},
+            {"Metric": "Return on Tangible Capital", "Value": f"{rotce:.1f}%", "Assessment": "Efficient"},
+            {"Metric": "Annual Recurring Revenue", "Value": f"{curr}{arr:,.1f} {unit}", "Assessment": "High Visibility"},
+            {"Metric": "Net Revenue Retention", "Value": f"{nrr:.1f}%", "Assessment": "Expansion Strong"}
         ]
         st.dataframe(pd.DataFrame(qoe_rows), use_container_width=True, hide_index=True)
 
     with opt_right:
         st.markdown("#### 📊 Trade-off Matrix Across Price Band")
         fig_trade = go.Figure()
-        fig_trade.add_trace(go.Scatter(
-            x=opt_df["Price"], y=opt_df["Coverage"], name="Subscription Coverage (x)",
-            line=dict(color="#3b82f6", width=2.5), yaxis="y1"
-        ))
-        fig_trade.add_trace(go.Scatter(
-            x=opt_df["Price"], y=opt_df["ValDiscount"], name="Valuation Discount (%)",
-            line=dict(color="#10b981", width=2.5, dash="dash"), yaxis="y2"
-        ))
+        fig_trade.add_trace(go.Scatter(x=opt_df["Price"], y=opt_df["Coverage"], name="Subscription Coverage (x)", line=dict(color="#3b82f6", width=2.5)))
+        fig_trade.add_trace(go.Scatter(x=opt_df["Price"], y=opt_df["ValDiscount"], name="Valuation Discount (%)", line=dict(color="#10b981", width=2.5, dash="dash")))
         fig_trade.update_layout(
             height=320,
             margin=dict(l=20, r=20, t=40, b=20),
             xaxis=dict(title=f"Offer Price ({curr})"),
-            yaxis=dict(title="Coverage (x)", titlefont=dict(color="#3b82f6"), tickfont=dict(color="#3b82f6")),
-            yaxis2=dict(title="Valuation Discount (%)", titlefont=dict(color="#10b981"), tickfont=dict(color="#10b981"), overlaying="y", side="right"),
-            legend=dict(orientation="h", y=1.15)
+            yaxis=dict(title="Score / Level"),
+            legend=dict(orientation="h", y=1.12, x=0.0)
         )
         st.plotly_chart(fig_trade, use_container_width=True)
 
@@ -584,9 +409,7 @@ with t1:
         """
         st.info(rec_text)
 
-# =========================================================
 # TAB 2: SECTOR VALUATION & PEER MATRIX
-# =========================================================
 with t2:
     st.subheader(f"🏢 Sector-Tailored Valuation & Peer Matrix ({sector})")
     peer_rows = []
@@ -597,40 +420,26 @@ with t2:
         curr_p = offer_price if name == selected_issuer else d["offer_price"]
         mcap = curr_p * a["shares_m"]
         ev = mcap + a["net_debt"]
-        spark = list(np.cumsum(rng_spark.normal(0.4, 1.5, 15)) + 50)
         peer_rows.append({
-            "Ticker": info["ticker"],
-            "Issuer Name": name.split(" (")[0],
-            "Sector": info["sector"].split(" / ")[0],
-            "Offer Price": f"{info['curr']}{curr_p:,.2f}",
-            "ROTCE / ROE": f"{a['rotce']:.1f}%",
-            "ARR / Rev": f"{curr}{a['arr']:,.0f}",
-            "Market Cap": round(mcap, 1),
-            "EV / Sales": round(ev / max(a["ltm_rev"], 1), 2)
+            "Ticker": info["ticker"], "Issuer Name": name.split(" (")[0],
+            "Sector": info["sector"].split(" / ")[0], "Offer Price": f"{info['curr']}{curr_p:,.2f}",
+            "ROTCE / ROE": f"{a['rotce']:.1f}%", "ARR / Rev": f"{curr}{a['arr']:,.0f}",
+            "Market Cap": round(mcap, 1), "EV / Sales": round(ev / max(a["ltm_rev"], 1), 2)
         })
     peers_df = pd.DataFrame(peer_rows)
     st.dataframe(peers_df, use_container_width=True, hide_index=True)
 
     sc_left, sc_right = st.columns(2, gap="large")
     with sc_left:
-        fig_scat = px.scatter(
-            peers_df, x="Market Cap", y="EV / Sales", size="Market Cap",
-            color="Sector", text="Ticker", title="Peer Valuation: Market Cap vs EV / Sales"
-        )
-        fig_scat.update_traces(textposition="top center")
+        fig_scat = px.scatter(peers_df, x="Market Cap", y="EV / Sales", size="Market Cap", color="Sector", text="Ticker", title="Market Cap vs EV / Sales")
         fig_scat.update_layout(height=360, margin=dict(l=20, r=20, t=45, b=20))
         st.plotly_chart(fig_scat, use_container_width=True)
     with sc_right:
-        fig_bar_val = px.bar(
-            peers_df, x="Ticker", y="Market Cap", color="Sector",
-            title="Valuation Comparison Across Pipeline Peers"
-        )
+        fig_bar_val = px.bar(peers_df, x="Ticker", y="Market Cap", color="Sector", title="Valuation Comparison Across Peers")
         fig_bar_val.update_layout(height=360, margin=dict(l=20, r=20, t=45, b=20))
         st.plotly_chart(fig_bar_val, use_container_width=True)
 
-# =========================================================
 # TAB 3: SYNDICATE ROADSHOW & BOOKBUILDING
-# =========================================================
 with t3:
     st.subheader(f"📅 Syndicate Roadshow Bookbuilding & Institutional Demand — {selected_issuer}")
     roadshow_days = ["Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10", "Books Close"]
@@ -638,61 +447,49 @@ with t3:
     iois_submitted = [0, 0, 5, 12, 20, 30, 38, 52, 70, 88, 100]
 
     fig_road = go.Figure()
-    fig_road.add_trace(go.Bar(x=roadshow_days, y=iois_submitted, name="Confirmed IOIs Submitted ($/₹ M)", marker_color="#10b981"))
-    fig_road.add_trace(go.Bar(x=roadshow_days, y=req_meetings, name="1-on-1 Institutional Meetings", marker_color="#3b82f6"))
-    fig_road.update_layout(barmode="group", title="Roadshow Progression & Book Depth", height=340, margin=dict(l=20, r=20, t=45, b=20), legend=dict(orientation="h", y=1.12))
+    fig_road.add_trace(go.Bar(x=roadshow_days, y=iois_submitted, name="Confirmed IOIs", marker_color="#10b981"))
+    fig_road.add_trace(go.Bar(x=roadshow_days, y=req_meetings, name="Meetings", marker_color="#3b82f6"))
+    fig_road.update_layout(barmode="group", title="Roadshow Progression", height=340, margin=dict(l=20, r=20, t=45, b=20), legend=dict(orientation="h", y=1.12))
     st.plotly_chart(fig_road, use_container_width=True)
 
     ob_left, ob_right = st.columns(2, gap="large")
-    p_low = round(offer_price * 0.94, 2)
-    p_mid = round(offer_price, 2)
-    p_high = round(offer_price * 1.06, 2)
+    p_low, p_mid, p_high = round(offer_price * 0.94, 2), round(offer_price, 2), round(offer_price * 1.06, 2)
     with ob_left:
         st.markdown("#### 📑 Order Book Sensitivity Table")
         ob_table = pd.DataFrame({
             "Price Band": [f"Floor ({curr}{p_low})", f"Target ({curr}{p_mid})", f"Cap ({curr}{p_high})"],
-            "Meetings Held": ["146", "125", "112"],
-            "Demand Coverage": ["3.4x", "2.6x", "1.8x"],
-            "Institutional QIBs": ["58", "45", "31"],
-            "Anchor Lockin (%)": ["65%", "55%", "40%"]
+            "Meetings Held": ["146", "125", "112"], "Demand Coverage": ["3.4x", "2.6x", "1.8x"],
+            "Institutional QIBs": ["58", "45", "31"], "Anchor Lockin (%)": ["65%", "55%", "40%"]
         })
         st.dataframe(ob_table, use_container_width=True, hide_index=True)
     with ob_right:
         st.markdown("#### 📊 Investor Allocation Breakdown")
-        fig_pie_inv = go.Figure(data=[go.Pie(
-            labels=["Qualified Institutional Buyers (QIB)", "Anchor Investors", "High Net Worth (HNI)", "Retail Investors"],
-            values=[55, 20, 15, 10], hole=0.5,
-            marker_colors=["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
-        )])
+        fig_pie_inv = go.Figure(data=[go.Pie(labels=["QIB", "Anchor", "HNI", "Retail"], values=[55, 20, 15, 10], hole=0.5, marker_colors=["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"])])
         fig_pie_inv.update_layout(height=280, margin=dict(l=10, r=10, t=25, b=10))
         st.plotly_chart(fig_pie_inv, use_container_width=True)
 
-# =========================================================
 # TAB 4: DEFENSIBLE VaR & STRESS ENGINE
-# =========================================================
 with t4:
     st.subheader(f"🛡️ Advanced Defensible Risk & VaR Engine ({var_horizon_days}-Day Horizon, {var_conf*100:.0f}% Conf)")
-    
     r1, r2, r3, r4 = st.columns(4)
-    r1.metric("Parametric VaR (Normal)", f"{curr}{param_var:,.1f}", "Baseline Vol")
-    r2.metric("Historical Sim VaR", f"{curr}{hist_var:,.1f}", f"{var_conf*100:.0f}% Quantile")
-    r3.metric("Expected Shortfall (CVaR)", f"{curr}{cvar:,.1f}", "Tail Loss Average")
-    r4.metric("Stressed VaR (1.75x Vol)", f"{curr}{stressed_var:,.1f}", "Macro Stress Scenario")
+    r1.metric("Parametric VaR", f"{curr}{param_var:,.1f}", "Normal")
+    r2.metric("Historical Sim VaR", f"{curr}{hist_var:,.1f}", "Quantile")
+    r3.metric("Expected Shortfall (CVaR)", f"{curr}{cvar:,.1f}", "Tail Loss")
+    r4.metric("Stressed VaR", f"{curr}{stressed_var:,.1f}", "Macro Stress")
 
     r5, r6, r7, r8 = st.columns(4)
-    r5.metric("Fat-Tail Monte Carlo VaR", f"{curr}{mc_var:,.1f}", f"Student-t (df={tail_df})")
-    r6.metric("Max Drawdown (95%)", f"-{max_drawdown_pct:.1f}%", "Peak-to-Trough")
-    r7.metric("Liquidity-Adjusted VaR", f"{curr}{liquidity_var:,.1f}", "Includes 4.5% Haircut")
-    r8.metric("Reverse Stress Loss", f"{curr}{init_alloc * 0.35:,.1f}", "Breakpoint Threshold")
+    r5.metric("Fat-Tail Monte Carlo VaR", f"{curr}{mc_var:,.1f}", f"Student-t")
+    r6.metric("Max Drawdown", f"-{max_drawdown_pct:.1f}%", "Peak-Trough")
+    r7.metric("Liquidity-Adjusted VaR", f"{curr}{liquidity_var:,.1f}", "Haircut")
+    r8.metric("Reverse Stress Loss", f"{curr}{init_alloc * 0.35:,.1f}", "Breakpoint")
 
     var_left, var_right = st.columns(2, gap="large")
     with var_left:
         fig_var_dist = go.Figure()
-        fig_var_dist.add_trace(go.Histogram(x=hist_losses, nbinsx=40, name="Historical Simulation P&L", marker_color="#38bdf8"))
-        fig_var_dist.add_trace(go.Histogram(x=mc_losses, nbinsx=40, name="Fat-Tail Student-t P&L", marker_color="#8b5cf6", opacity=0.7))
-        fig_var_dist.add_vline(x=hist_var, line_dash="dash", line_color="#ef4444", annotation_text=f"Hist VaR: {curr}{hist_var:.1f}")
-        fig_var_dist.add_vline(x=cvar, line_dash="dot", line_color="#f59e0b", annotation_text=f"CVaR: {curr}{cvar:.1f}")
-        fig_var_dist.update_layout(title="Loss Distribution Comparison (Normal vs. Fat-Tail)", height=340, margin=dict(l=20, r=20, t=45, b=20))
+        fig_var_dist.add_trace(go.Histogram(x=hist_losses, nbinsx=40, name="Historical P&L", marker_color="#38bdf8"))
+        fig_var_dist.add_trace(go.Histogram(x=mc_losses, nbinsx=40, name="Fat-Tail Student-t", marker_color="#8b5cf6", opacity=0.7))
+        fig_var_dist.add_vline(x=hist_var, line_dash="dash", line_color="#ef4444")
+        fig_var_dist.update_layout(title="Loss Distribution Comparison", height=340, margin=dict(l=20, r=20, t=45, b=20))
         st.plotly_chart(fig_var_dist, use_container_width=True)
 
     with var_right:
@@ -700,20 +497,18 @@ with t4:
         p_var_path = [param_var * np.sqrt(d / var_horizon_days) for d in days_arr]
         s_var_path = [stressed_var * np.sqrt(d / var_horizon_days) for d in days_arr]
         fig_var_path = go.Figure()
-        fig_var_path.add_trace(go.Scatter(x=days_arr, y=p_var_path, mode="lines+markers", name="Baseline Parametric VaR", line=dict(color="#3b82f6")))
-        fig_var_path.add_trace(go.Scatter(x=days_arr, y=s_var_path, mode="lines+markers", name="Stressed Correlation Breakdown", line=dict(color="#ef4444")))
-        fig_var_path.update_layout(title=f"VaR Term Structure over {var_horizon_days} Days", height=340, margin=dict(l=20, r=20, t=45, b=20))
+        fig_var_path.add_trace(go.Scatter(x=days_arr, y=p_var_path, mode="lines+markers", name="Parametric VaR", line=dict(color="#3b82f6")))
+        fig_var_path.add_trace(go.Scatter(x=days_arr, y=s_var_path, mode="lines+markers", name="Stressed VaR", line=dict(color="#ef4444")))
+        fig_var_path.update_layout(title="VaR Term Structure", height=340, margin=dict(l=20, r=20, t=45, b=20))
         st.plotly_chart(fig_var_path, use_container_width=True)
 
-# =========================================================
 # TAB 5: GOVERNANCE, BACKTEST & IC MEMO
-# =========================================================
 with t5:
     st.subheader("🛡️ Model Governance, Empirical Backtest & Executive IC Memo")
     g1, g2, g3 = st.columns(3)
     g1.metric("Model Version", MODEL_VERSION)
     g2.metric("Pipeline Issuers", "6 Audited Entities")
-    g3.metric("Audit Status", "100% Defensible & Verified")
+    g3.metric("Audit Status", "Verified")
 
     st.markdown("#### 1. Executive Pipeline Valuation & Optimization Matrix")
     matrix_rows = []
@@ -722,11 +517,8 @@ with t5:
         d = info["defaults"]
         p_use = offer_price if name == selected_issuer else d["offer_price"]
         matrix_rows.append({
-            "Issuer Name": name,
-            "Ticker": info["ticker"],
-            "Sector": info["sector"].split(" / ")[0],
-            "Venue": info["venue"],
-            "Offer Price": f"{info['curr']}{p_use:,.2f}",
+            "Issuer Name": name, "Ticker": info["ticker"], "Sector": info["sector"].split(" / ")[0],
+            "Venue": info["venue"], "Offer Price": f"{info['curr']}{p_use:,.2f}",
             "Blended Fair Value": f"{info['curr']}{blended_fair_value if name == selected_issuer else d['offer_price']*1.15:,.2f}",
             "Status": "OPTIMIZED"
         })
@@ -736,13 +528,7 @@ with t5:
     dl1, dl2 = st.columns(2)
     with dl1:
         csv_bytes = matrix_df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 Download Pipeline Optimization Matrix (CSV)",
-            data=csv_bytes,
-            file_name="IPO_Optimization_Matrix.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+        st.download_button("📥 Download Pipeline Optimization Matrix (CSV)", data=csv_bytes, file_name="IPO_Optimization_Matrix.csv", mime="text/csv", use_container_width=True)
     with dl2:
         ic_memo = f"""INSTITUTIONAL INVESTMENT COMMITTEE MEMORANDUM
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')} | Model: {MODEL_VERSION}
@@ -754,21 +540,8 @@ Issuer: {selected_issuer} ({tk}) | Sector: {sector}
 - Blended Intrinsic Value: {curr}{blended_fair_value:,.2f}
 - Implied Upside: {upside_pct:+.1f}%
 - Recommended Signal: {model_signal}
-
-2. ADVANCED RISK METRICS ({var_horizon_days}-Day Horizon)
-- Historical VaR ({var_conf*100:.0f}%): {curr}{hist_var:,.1f}
-- Expected Shortfall (CVaR): {curr}{cvar:,.1f}
-- Fat-Tail Monte Carlo VaR: {curr}{mc_var:,.1f}
-- Stressed VaR (1.75x Vol): {curr}{stressed_var:,.1f}
-- Max Drawdown (95%): -{max_drawdown_pct:.1f}%
 """
-        st.download_button(
-            label="📄 Download Executive IC Memo (.TXT)",
-            data=ic_memo.encode("utf-8"),
-            file_name=f"{tk}_IC_Optimization_Memo.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
+        st.download_button("📄 Download Executive IC Memo (.TXT)", data=ic_memo.encode("utf-8"), file_name=f"{tk}_IC_Memo.txt", mime="text/plain", use_container_width=True)
 
     st.markdown("#### 2. Empirical Historical IPO Backtest Audit")
     st.dataframe(HISTORICAL_BACKTEST, use_container_width=True, hide_index=True)
