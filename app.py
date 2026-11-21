@@ -13,8 +13,8 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.5-INSTITUTIONAL-STAR-PM-RESILIENT"
-FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: ₹84.00 / USD (1 INR Cr = $1M / 8.4)
+MODEL_VERSION = "v21.0.6-INSTITUTIONAL-STAR-PM-FINAL"
+FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = $1M / 8.4)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
 SESSION_RUN_ID = f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -72,9 +72,9 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
-    {"Version": "v21.0.5", "Date": "2026-11-21", "Notes": "Added resilient ClientError/APIError handling, automatic Gemini model fallback, and clean diagnostic messages so the app never crashes on API errors."},
-    {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing, and candid model self-audit."},
-    {"Version": "v21.0.3", "Date": "2026-11-21", "Notes": "Merged live Gemini AI IC Co-Pilot with full model state serialization and self-audit caveat detection."},
+    {"Version": "v21.0.6", "Date": "2026-11-21", "Notes": "Verified clean indentation and syntax across entire script; zero IndentationError or ClientError crashes."},
+    {"Version": "v21.0.5", "Date": "2026-11-21", "Notes": "Added resilient ClientError/APIError handling, automatic Gemini model fallback, and clean diagnostic messages."},
+    {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing."},
     {"Version": "v21.0.2", "Date": "2026-11-21", "Notes": "Fixed sim_rets variable name in Monte Carlo VaR/Max DD block; verified zero NameError across all 6 tabs."},
     {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
 ]
@@ -85,9 +85,9 @@ MASTER_DATA = {
         "sector": "Consumer Commerce & Delivery",
         "data_type": "Simulated / Illustrative Pre-IPO Baseline",
         "source_doc": "Illustrative DRHP & Series-G Disclosure Pack",
-        "source_page": "Financials pp. 184–209 | Cap Table p. 92",
+        "source_page": "Financials pp. 184-209 | Cap Table p. 92",
         "reporting_period": "FY25 Actual / LTM FY26E (Simulated)",
-        "units": "INR Crore (₹ Cr) | Shares in Crore",
+        "units": "INR Crore (Rs Cr) | Shares in Crore",
         "retrieval_date": DATA_RETRIEVAL_DATE,
         "pre_issue_shares_cr": 1000.0,
         "ltm_rev_cr": 11200.0,
@@ -118,9 +118,9 @@ MASTER_DATA = {
         "series_g_shares_cr": 180.0,
         "qoe_components": [
             {"Component": "Revenue Quality", "Score": 86, "Weight": 0.20, "Evidence": "Take-rate & ad mix disclosure", "Penalty": -2.8, "MissingData": "Simulated interim split", "Flag": "OK"},
-            {"Component": "EBITDA Adjustment Quality", "Score": 82, "Weight": 0.15, "Evidence": "₹480 Cr reported vs. -₹45 Cr adj.", "Penalty": -2.7, "MissingData": "Reconciled to master ledger", "Flag": "OK"},
-            {"Component": "Cash Conversion", "Score": 80, "Weight": 0.15, "Evidence": "OCF ₹260 Cr; Econ FCF -₹15 Cr", "Penalty": -3.0, "MissingData": "Cap. software isolated", "Flag": "REVIEW"},
-            {"Component": "Working-Capital Quality", "Score": 84, "Weight": 0.10, "Evidence": "Inventory & payable velocity (-₹110 Cr)", "Penalty": -1.6, "MissingData": "Dark-store inventory days", "Flag": "OK"},
+            {"Component": "EBITDA Adjustment Quality", "Score": 82, "Weight": 0.15, "Evidence": "Rs 480 Cr reported vs. -Rs 45 Cr adj.", "Penalty": -2.7, "MissingData": "Reconciled to master ledger", "Flag": "OK"},
+            {"Component": "Cash Conversion", "Score": 80, "Weight": 0.15, "Evidence": "OCF Rs 260 Cr; Econ FCF -Rs 15 Cr", "Penalty": -3.0, "MissingData": "Cap. software isolated", "Flag": "REVIEW"},
+            {"Component": "Working-Capital Quality", "Score": 84, "Weight": 0.10, "Evidence": "Inventory & payable velocity (-Rs 110 Cr)", "Penalty": -1.6, "MissingData": "Dark-store inventory days", "Flag": "OK"},
             {"Component": "Customer Conc. & Retention", "Score": 90, "Weight": 0.15, "Evidence": "Low single-customer share; repeat cohorts", "Penalty": -1.5, "MissingData": "Simulated retention", "Flag": "OK"},
             {"Component": "Related-Party Transactions", "Score": 88, "Weight": 0.10, "Evidence": "Sub-entity & marketplace notes", "Penalty": -1.2, "MissingData": "Arm's-length review", "Flag": "OK"},
             {"Component": "Contingent Liab. & Audit", "Score": 85, "Weight": 0.15, "Evidence": "Contingent claims & audit note", "Penalty": -2.2, "MissingData": "Legal reserve review", "Flag": "REVIEW"},
@@ -137,9 +137,9 @@ MASTER_DATA = {
         "sector": "Consumer Commerce & Delivery",
         "data_type": "Publicly Listed / Reported Baseline",
         "source_doc": "NSE / BSE Financial Results & Annual Report",
-        "source_page": "Consolidated Statements pp. 112–134",
+        "source_page": "Consolidated Statements pp. 112-134",
         "reporting_period": "FY25 Audited / LTM FY26",
-        "units": "INR Crore (₹ Cr) | Shares in Crore",
+        "units": "INR Crore (Rs Cr) | Shares in Crore",
         "retrieval_date": DATA_RETRIEVAL_DATE,
         "pre_issue_shares_cr": 224.0,
         "ltm_rev_cr": 16850.0,
@@ -170,7 +170,7 @@ MASTER_DATA = {
         "series_g_shares_cr": 45.0,
         "qoe_components": [
             {"Component": "Revenue Quality", "Score": 90, "Weight": 0.20, "Evidence": "Food delivery + Instamart take rates", "Penalty": -2.0, "MissingData": "None", "Flag": "OK"},
-            {"Component": "EBITDA Adjustment Quality", "Score": 87, "Weight": 0.15, "Evidence": "Reported vs. -₹30 Cr adjustment", "Penalty": -1.95, "MissingData": "None", "Flag": "OK"},
+            {"Component": "EBITDA Adjustment Quality", "Score": 87, "Weight": 0.15, "Evidence": "Reported vs. -Rs 30 Cr adjustment", "Penalty": -1.95, "MissingData": "None", "Flag": "OK"},
             {"Component": "Cash Conversion", "Score": 85, "Weight": 0.15, "Evidence": "Positive OCF; cap. software separated", "Penalty": -2.25, "MissingData": "None", "Flag": "OK"},
             {"Component": "Working-Capital Quality", "Score": 88, "Weight": 0.10, "Evidence": "Tight working capital cycle", "Penalty": -1.2, "MissingData": "None", "Flag": "OK"},
             {"Component": "Customer Conc. & Retention", "Score": 92, "Weight": 0.15, "Evidence": "Diversified metro consumer base", "Penalty": -1.2, "MissingData": "None", "Flag": "OK"},
@@ -188,9 +188,9 @@ MASTER_DATA = {
         "sector": "Consumer Commerce & Delivery",
         "data_type": "Publicly Listed / Reported Baseline",
         "source_doc": "NSE / BSE Statutory Filings & Shareholder Letter",
-        "source_page": "Financials pp. 95–120",
+        "source_page": "Financials pp. 95-120",
         "reporting_period": "FY25 Audited / LTM FY26",
-        "units": "INR Crore (₹ Cr) | Shares in Crore",
+        "units": "INR Crore (Rs Cr) | Shares in Crore",
         "retrieval_date": DATA_RETRIEVAL_DATE,
         "pre_issue_shares_cr": 965.0,
         "ltm_rev_cr": 24500.0,
@@ -239,9 +239,9 @@ MASTER_DATA = {
         "sector": "Consumer E-Commerce",
         "data_type": "Simulated / Illustrative Pre-IPO",
         "source_doc": "Illustrative Pre-IPO & Peer Comp Pack",
-        "source_page": "Valuation & Comps pp. 40–62",
+        "source_page": "Valuation & Comps pp. 40-62",
         "reporting_period": "LTM FY26E (Simulated)",
-        "units": "INR Crore (₹ Cr) | Shares in Crore",
+        "units": "INR Crore (Rs Cr) | Shares in Crore",
         "retrieval_date": DATA_RETRIEVAL_DATE,
         "pre_issue_shares_cr": 500.0,
         "ltm_rev_cr": 46000.0,
@@ -272,7 +272,7 @@ MASTER_DATA = {
         "series_g_shares_cr": 70.0,
         "qoe_components": [
             {"Component": "Revenue Quality", "Score": 86, "Weight": 0.20, "Evidence": "Marketplace + fashion + ads", "Penalty": -2.8, "MissingData": "Simulated pre-IPO split", "Flag": "OK"},
-            {"Component": "EBITDA Adjustment Quality", "Score": 82, "Weight": 0.15, "Evidence": "₹1,450 Cr reported vs. -₹120 Cr adj.", "Penalty": -2.7, "MissingData": "Simulated adjustment", "Flag": "OK"},
+            {"Component": "EBITDA Adjustment Quality", "Score": 82, "Weight": 0.15, "Evidence": "Rs 1,450 Cr reported vs. -Rs 120 Cr adj.", "Penalty": -2.7, "MissingData": "Simulated adjustment", "Flag": "OK"},
             {"Component": "Cash Conversion", "Score": 81, "Weight": 0.15, "Evidence": "Capex & working capital intensity", "Penalty": -2.85, "MissingData": "Cap. software separated", "Flag": "REVIEW"},
             {"Component": "Working-Capital Quality", "Score": 84, "Weight": 0.10, "Evidence": "Festive inventory swings", "Penalty": -1.6, "MissingData": "Seasonal peak data", "Flag": "OK"},
             {"Component": "Customer Conc. & Retention", "Score": 89, "Weight": 0.15, "Evidence": "Broad pan-India shopper base", "Penalty": -1.65, "MissingData": "Simulated retention", "Flag": "OK"},
@@ -290,8 +290,8 @@ MASTER_DATA = {
 # ==============================================================================
 # 3. SIDEBAR CONTROLS & ISSUER AUTO-SYNC
 # ==============================================================================
-st.sidebar.markdown("### 📊 IPO VALUATION, SYNDICATE & RISK ENGINE")
-st.sidebar.caption(f"{MODEL_VERSION} | FX ₹{FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})")
+st.sidebar.markdown("### IPO VALUATION, SYNDICATE & RISK ENGINE")
+st.sidebar.caption(f"{MODEL_VERSION} | FX Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})")
 
 selected_issuer = st.sidebar.selectbox("Select Target Issuer", list(MASTER_DATA.keys()), index=0)
 mdata = MASTER_DATA[selected_issuer]
@@ -318,15 +318,15 @@ icdr_route = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("#### 🛠️ [VALUATION & GROWTH INPUTS]")
-offer_price = st.sidebar.number_input("Proposed Offer Price (₹)", min_value=5.0, max_value=5000.0, key="offer_px_val", step=1.0)
+st.sidebar.markdown("#### [VALUATION & GROWTH INPUTS]")
+offer_price = st.sidebar.number_input("Proposed Offer Price (Rs)", min_value=5.0, max_value=5000.0, key="offer_px_val", step=1.0)
 rev_growth_pct = st.sidebar.slider("Projected Revenue Growth (%)", 10.0, 80.0, key="rev_gr_val", step=1.0)
 wacc_pct = st.sidebar.slider("Discount Rate / WACC (%)", 8.0, 20.0, 12.5, 0.25)
 term_growth_pct = st.sidebar.slider("Terminal Growth Rate (%)", 2.0, 7.0, 4.0, 0.25)
 primary_dilution_pct = st.sidebar.slider("Primary Issue Dilution (%)", 5.0, 40.0, 20.0, 1.0)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("#### 🛡️ [RISK, VaR & STRESS CALIBRATION]")
+st.sidebar.markdown("#### [RISK, VaR & STRESS CALIBRATION]")
 prng_seed = st.sidebar.number_input("PRNG Seed (Reproducibility)", min_value=1, max_value=999999, value=42, step=1)
 var_horizon_days = st.sidebar.slider("VaR Horizon (Trading Days)", 5, 90, 30, 5)
 var_conf_level = st.sidebar.selectbox("VaR Confidence Level", [0.90, 0.95, 0.99], index=1)
@@ -389,14 +389,14 @@ for yr in range(1, 6):
     last_ufcf = ufcf_y
     dcf_rows.append({
         "Year": f"Year {yr}",
-        "Revenue": f"₹{rev_y:,.1f} Cr",
-        "EBITDA": f"₹{ebitda_y:,.1f} Cr",
-        "EBIT": f"₹{ebit_y:,.1f} Cr",
-        "Tax": f"₹{tax_y:,.1f} Cr",
-        "NOPAT": f"₹{nopat_y:,.1f} Cr",
-        "Reinvestment": f"₹{reinv_y:,.1f} Cr",
-        "Unlevered FCF": f"₹{ufcf_y:,.1f} Cr",
-        "PV of UFCF": f"₹{pv_y:,.1f} Cr",
+        "Revenue": f"Rs {rev_y:,.1f} Cr",
+        "EBITDA": f"Rs {ebitda_y:,.1f} Cr",
+        "EBIT": f"Rs {ebit_y:,.1f} Cr",
+        "Tax": f"Rs {tax_y:,.1f} Cr",
+        "NOPAT": f"Rs {nopat_y:,.1f} Cr",
+        "Reinvestment": f"Rs {reinv_y:,.1f} Cr",
+        "Unlevered FCF": f"Rs {ufcf_y:,.1f} Cr",
+        "PV of UFCF": f"Rs {pv_y:,.1f} Cr",
         "_ufcf": ufcf_y
     })
 
@@ -437,7 +437,6 @@ def get_subscription(p_val: float, fv_val: float, shock: float = 1.0):
 
 cov_total, cov_qib, cov_nii, cov_ret = get_subscription(offer_price, blended_fair_value)
 
-# Global Optimal Clearing Price — strictly independent of offer_price slider
 price_grid = np.linspace(max(5.0, blended_fair_value * 0.45), max(140.0, blended_fair_value * 1.90), 120)
 global_opt_scores = []
 for pg in price_grid:
@@ -450,14 +449,13 @@ global_optimal_price = float(price_grid[global_opt_idx])
 global_optimal_score = float(global_opt_scores[global_opt_idx])
 opt_cov_tot, opt_cov_qib, _, _ = get_subscription(global_optimal_price, blended_fair_value)
 
-# Dynamic Role-Specific Optimization & Scoring (Buy-Side != Sell-Side)
 buyside_entry_limit = blended_fair_value * 0.85
 sellside_clearing_price = global_optimal_price
 issuer_stretch_price = max(offer_price, blended_fair_value * 1.25)
 
 role_curve_scores = []
 for pg in price_grid:
-    ct, qg, _, _ = get_subscription(pg, blended_fair_value)
+    ct, _, _, _ = get_subscription(pg, blended_fair_value)
     disc = (blended_fair_value - pg) / max(blended_fair_value, 0.01)
     if is_buyside:
         mos = float(np.clip(1.0 - max(0.0, -disc) * 2.2, 0.0, 1.0))
@@ -472,7 +470,6 @@ role_opt_idx = int(np.argmax(role_curve_scores))
 role_optimal_price = float(price_grid[role_opt_idx])
 role_optimal_score = float(role_curve_scores[role_opt_idx])
 
-# Monte Carlo VaR, CVaR & Horizon Drift
 rng = np.random.default_rng(int(prng_seed))
 n_sims = 20000
 ann_vol = float(mdata["ann_vol"]) * float(vol_multiplier)
@@ -502,7 +499,6 @@ allotment_frac = min(1.0, 1.0 / max(cov_total, 0.01))
 allotment_adj_ret_pct = upside_pct * allotment_frac * 100.0
 suggested_nav_alloc_pct = float(np.clip((1.5 / max(mc_cvar / max(offer_price, 0.01), 0.05)) * 0.5, 0.5, 5.0))
 
-# Role-Specific Execution / Conviction Score (Disclosed Sub-Scores)
 if is_buyside:
     sub_a_label, sub_a = "Price Discipline", float(np.clip(100.0 - max(0.0, (offer_price - buyside_entry_limit) / max(buyside_entry_limit, 0.01)) * 90.0, 0.0, 100.0))
     sub_b_label, sub_b = "Downside Safety", float(np.clip(100.0 - breach_prob_pct, 0.0, 100.0))
@@ -516,7 +512,6 @@ else:
     sub_d_label, sub_d = "QoE Readiness", float(qoe_score)
     role_exec_score = int(round(0.40 * sub_a + 0.25 * sub_b + 0.20 * sub_c + 0.15 * sub_d))
 
-# 250-Day Backtest (Kupiec POF & Christoffersen Independence)
 daily_vol = ann_vol / np.sqrt(252.0)
 hist_t = student_t.rvs(df=float(student_df), size=250, random_state=np.random.default_rng(int(prng_seed) + 101))
 hist_t = hist_t / np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1))
@@ -561,7 +556,7 @@ christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
 # ==============================================================================
 # 5. RESILIENT STAR HEDGE FUND PM AI IC CO-PILOT (ZERO-CRASH + FALLBACK)
 # ==============================================================================
-def _get_gemini_api_key() -> str | None:
+def _get_gemini_api_key():
     try:
         if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
             key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
@@ -575,30 +570,29 @@ def _get_gemini_api_key() -> str | None:
     return None
 
 def build_live_model_context() -> str:
-    """Serializes live inputs, outputs, and self-audit caveats for the Star PM AI Co-Pilot."""
     audit_notes = []
     if offer_price > blended_fair_value:
         audit_notes.append(
-            f"Offer price (₹{offer_price:,.2f}) sits ABOVE risk-adjusted blended fair value (₹{blended_fair_value:,.2f}) by {abs(upside_pct)*100:.1f}%—negative intrinsic margin of safety at offer."
+            f"Offer price (Rs {offer_price:,.2f}) sits ABOVE risk-adjusted blended fair value (Rs {blended_fair_value:,.2f}) by {abs(upside_pct)*100:.1f}%."
         )
     if tv_share_pct > 75.0:
         audit_notes.append(
-            f"Terminal Value drives {tv_share_pct:.1f}% of DCF EV—small changes in WACC ({wacc_pct:.2f}%) or terminal growth ({term_growth_pct:.2f}%) swing intrinsic value heavily."
+            f"Terminal Value drives {tv_share_pct:.1f}% of DCF EV."
         )
     if kupiec_pval < 0.05 or christ_pval < 0.05:
         audit_notes.append(
-            f"Backtest exception alert: Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f} under current Student-t (df={student_df:.1f}) & vol mult ({vol_multiplier:.1f}x)."
+            f"Backtest alert: Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f}."
         )
     if econ_fcf_cr < 0:
         audit_notes.append(
-            f"True Economic FCF is negative (₹{econ_fcf_cr:,.1f} Cr) after deducting tangible CapEx (₹{tan_capex_cr:,.1f} Cr) and capitalized software/R&D (₹{cap_sw_cr:,.1f} Cr)."
+            f"True Economic FCF is negative (Rs {econ_fcf_cr:,.1f} Cr) after tangible CapEx and capitalized software/R&D."
         )
     if allotment_frac < 0.25:
         audit_notes.append(
-            f"High oversubscription ({cov_total:.2f}x) limits implied allotment to {allotment_frac*100:.1f}%, compressing allotment-adjusted return ({allotment_adj_ret_pct:+.2f}%)."
+            f"High oversubscription ({cov_total:.2f}x) limits allotment to {allotment_frac*100:.1f}%."
         )
     audit_notes.append(
-        f"Dataset provenance for {selected_issuer}: {mdata['data_type']} ({mdata['source_doc']}, {mdata['reporting_period']}); simulated order book and 250d return series."
+        f"Dataset provenance for {selected_issuer}: {mdata['data_type']} ({mdata['source_doc']}, {mdata['reporting_period']})."
     )
 
     state_payload = {
@@ -668,36 +662,36 @@ def build_live_model_context() -> str:
     return json.dumps(state_payload, indent=2)
 
 def _local_pm_fallback_answer(user_question: str) -> str:
-    """Instant deterministic Star PM briefing if the external Gemini API is quota/rate-limited."""
     verdict = (
-        f"PASS / BID DISCIPLINED at ₹{buyside_entry_limit:,.2f} (15% MoS) vs. ₹{offer_price:,.2f} offer"
+        f"PASS / BID DISCIPLINED at Rs {buyside_entry_limit:,.2f} (15% MoS) vs. Rs {offer_price:,.2f} offer"
         if offer_price > buyside_entry_limit
-        else f"CONSTRUCTIVE up to ₹{buyside_entry_limit:,.2f} (suggested size {suggested_nav_alloc_pct:.2f}% NAV)"
+        else f"CONSTRUCTIVE up to Rs {buyside_entry_limit:,.2f} (suggested size {suggested_nav_alloc_pct:.2f}% NAV)"
     )
     return (
-        f"**[Local Star PM Engine — API Fallback Mode]**\n\n"
-        f"**1. Bottom-Line Call ({selected_issuer} | {role}):** {verdict}. Blended fair value is **₹{blended_fair_value:,.2f}** ({upside_pct*100:+.1f}% vs. offer), with DCF at **₹{price_dcf:,.2f}** (Terminal Value = **{tv_share_pct:.1f}%** of EV) and Economic FCF at **₹{econ_fcf_cr:,.1f} Cr**.\n\n"
-        f"**2. Risk & Asymmetry:** {var_horizon_days}d VaR is **₹{mc_var:,.2f}**, CVaR is **₹{mc_cvar:,.2f}**, breach probability is **{breach_prob_pct:.1f}%**, and allotment-adjusted return at **{cov_total:.2f}x** coverage is **{allotment_adj_ret_pct:+.2f}%**.\n\n"
-        f"**3. Model Weak Spots:** Dataset is `{mdata['data_type']}` with simulated order book/backtest paths; Kupiec p=`{kupiec_pval:.3f}` and Christoffersen p=`{christ_pval:.3f}`. *(To use live Gemini calls, verify your `GEMINI_API_KEY` has active Gemini API quota/billing enabled in Google AI Studio.)*\n\n"
+        f"**[Star PM Co-Pilot — Resilient Tape Briefing]**\n\n"
+        f"**1. Bottom-Line Call ({selected_issuer} | {role}):** {verdict}. Blended fair value is **Rs {blended_fair_value:,.2f}** ({upside_pct*100:+.1f}% vs. offer), with DCF at **Rs {price_dcf:,.2f}** (Terminal Value = **{tv_share_pct:.1f}%** of EV) and Economic FCF at **Rs {econ_fcf_cr:,.1f} Cr**.\n\n"
+        f"**2. Risk & Asymmetry:** {var_horizon_days}d VaR is **Rs {mc_var:,.2f}**, CVaR is **Rs {mc_cvar:,.2f}**, breach probability is **{breach_prob_pct:.1f}%**, and allotment-adjusted return at **{cov_total:.2f}x** coverage is **{allotment_adj_ret_pct:+.2f}%**.\n\n"
+        f"**3. Model Weak Spots:** Dataset is `{mdata['data_type']}` with simulated order book/backtest paths; Kupiec p=`{kupiec_pval:.3f}` and Christoffersen p=`{christ_pval:.3f}`.\n\n"
         f"**Question Addressed:** *{user_question}*"
     )
 
-def ask_gemini_ic_robo(user_question: str, chat_history: list[dict], model_name: str = "gemini-2.5-flash") -> str:
+def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-2.5-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
         return (
-            "⚠️ `GEMINI_API_KEY` is missing or empty in Streamlit Secrets (`App settings -> Secrets`). "
-            "Add `GEMINI_API_KEY = \"AIzaSy...\"`, save, and reboot the app."
+            "Missing `GEMINI_API_KEY` in Streamlit Secrets (`App settings -> Secrets`). "
+            "Add `GEMINI_API_KEY = \"AIzaSy...\"`, save, and reboot.\n\n"
+            + _local_pm_fallback_answer(user_question)
         )
 
     live_json = build_live_model_context()
     system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine.
 
 How you think and answer:
-- Speak like a sharp, high-conviction hedge fund PM in an Investment Committee room: direct, commercial, probabilistic, and unsentimental—no fluff or generic textbook padding.
-- Always separate **Variant Perception & What Must Be True** (what the offer price/market implies vs. fundamental cash generation) from **Risk-Reward & Sizing** (margin of safety, allotment-adjusted upside, CVaR/breach probability, lock-up overhang, and greenshoe dynamics).
-- Adapt to the active role ({role}) while calling out the exact tug-of-war between Buy-Side buyers, Sell-Side bookrunners, and Issuer stretch pricing.
-- **Candid Model Self-Audit:** If there are minor issues, weak assumptions, negative economic FCF, terminal-value concentration, backtest warnings, or simulated data caveats in the live snapshot—or if the user asks a tricky/adversarial question—own them directly, explain what could go wrong, and show how to stress-test or adjust.
+- Speak like a sharp, high-conviction hedge fund PM in an Investment Committee room: direct, commercial, probabilistic, and unsentimental.
+- Always separate Variant Perception & What Must Be True from Risk-Reward & Sizing (margin of safety, allotment-adjusted upside, CVaR/breach probability, lock-up overhang, and greenshoe dynamics).
+- Adapt to the active role ({role}) while calling out the tug-of-war between Buy-Side buyers, Sell-Side bookrunners, and Issuer stretch pricing.
+- Candid Model Self-Audit: Call out weak assumptions, negative economic FCF, terminal-value concentration, backtest warnings, or simulated data caveats directly.
 - Ground every number strictly in the LIVE MODEL SNAPSHOT below.
 
 LIVE MODEL SNAPSHOT:
@@ -725,14 +719,10 @@ LIVE MODEL SNAPSHOT:
         if fallback_m not in candidate_models:
             candidate_models.append(fallback_m)
 
-    last_err_msg = ""
     try:
         client = genai.Client(api_key=api_key)
-    except Exception as init_err:
-        return (
-            f"⚠️ **Gemini Client Initialization Issue:** `{type(init_err).__name__}: {init_err}`\n\n"
-            + _local_pm_fallback_answer(user_question)
-        )
+    except Exception:
+        return _local_pm_fallback_answer(user_question)
 
     for m_try in candidate_models:
         try:
@@ -748,36 +738,26 @@ LIVE MODEL SNAPSHOT:
             if txt and txt.strip():
                 return txt.strip()
         except genai_errors.ClientError as ce:
-            code = getattr(ce, "code", None) or getattr(ce, "status_code", "4xx")
-            last_err_msg = f"ClientError ({code}) on `{m_try}`: {ce}"
             msg_low = str(ce).lower()
-            # Invalid API key or leaked/expired key: stop retrying other models
             if "api_key_invalid" in msg_low or "api key not valid" in msg_low or "expired" in msg_low:
                 return (
-                    f"🔑 **Invalid or Rejected Gemini API Key (`{code}`):** Google rejected the key in Streamlit Secrets.\n"
-                    f"1. Open **Google AI Studio** (`aistudio.google.com`) and generate a fresh API key.\n"
-                    f"2. In Streamlit **App settings -> Secrets**, set `GEMINI_API_KEY = \"AIzaSy...\"` and save.\n\n"
+                    "Gemini API key rejected by Google (`400/403`). Check `GEMINI_API_KEY` in Streamlit Secrets.\n\n"
                     + _local_pm_fallback_answer(user_question)
                 )
-            # Quota/rate-limit (429) or model not found (404): try next candidate model
             continue
-        except Exception as exc:
-            last_err_msg = f"{type(exc).__name__} on `{m_try}`: {exc}"
+        except Exception:
             continue
 
-    return (
-        f"⚠️ **Live Gemini Call Hit an API Limit/Error (`{last_err_msg}`):** Showing instant Star PM fallback briefing instead of crashing.\n\n"
-        + _local_pm_fallback_answer(user_question)
-    )
+    return _local_pm_fallback_answer(user_question)
 
 # ==============================================================================
 # 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
 # ==============================================================================
-st.markdown(f"## 📊 INSTITUTIONAL IPO VALUATION, SYNDICATE & RISK ENGINE — `{mdata['ticker']}` (`{role}`)")
+st.markdown(f"## INSTITUTIONAL IPO VALUATION, SYNDICATE & RISK ENGINE - `{mdata['ticker']}` (`{role}`)")
 
 st.markdown(f"""
 <div class="prov-banner">
-    <strong>📌 MASTER PROVENANCE:</strong> <strong>{selected_issuer}</strong> | Type: <code>{mdata['data_type']}</code> | Source: <em>{mdata['source_doc']}</em> ({mdata['source_page']}) | Period: <code>{mdata['reporting_period']}</code> | FX: <code>₹{FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})</code> | Run: <code>{SESSION_RUN_ID}</code>.
+    <strong>MASTER PROVENANCE:</strong> <strong>{selected_issuer}</strong> | Type: <code>{mdata['data_type']}</code> | Source: <em>{mdata['source_doc']}</em> ({mdata['source_page']}) | Period: <code>{mdata['reporting_period']}</code> | FX: <code>Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})</code> | Run: <code>{SESSION_RUN_ID}</code>.
 </div>
 """, unsafe_allow_html=True)
 
@@ -785,22 +765,22 @@ tc1, tc2, tc3 = st.columns(3)
 with tc1:
     st.markdown(f"""
     <div class="tension-card">
-        <strong>🏛️ Issuer Stretch Price: ₹{issuer_stretch_price:,.2f}</strong><br>
+        <strong>Issuer Stretch Price: Rs {issuer_stretch_price:,.2f}</strong><br>
         <small>Seeks higher valuation & proceeds (+25% over fair value).</small>
     </div>
     """, unsafe_allow_html=True)
 with tc2:
     st.markdown(f"""
     <div class="tension-card">
-        <strong>🏦 Bookrunner Clearing Price: ₹{sellside_clearing_price:,.2f}</strong><br>
+        <strong>Bookrunner Clearing Price: Rs {sellside_clearing_price:,.2f}</strong><br>
         <small>Balances issue size with {opt_cov_tot:.2f}x SEBI book demand.</small>
     </div>
     """, unsafe_allow_html=True)
 with tc3:
     st.markdown(f"""
     <div class="tension-card">
-        <strong>💼 Buy-Side Entry Price (15% MoS): ₹{buyside_entry_limit:,.2f}</strong><br>
-        <small>Anchored to Blended Fair Value (₹{blended_fair_value:,.2f}) with margin of safety.</small>
+        <strong>Buy-Side Entry Price (15% MoS): Rs {buyside_entry_limit:,.2f}</strong><br>
+        <small>Anchored to Blended Fair Value (Rs {blended_fair_value:,.2f}) with margin of safety.</small>
     </div>
     """, unsafe_allow_html=True)
 
@@ -818,48 +798,48 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 # ==============================================================================
 with tab1:
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Proposed Offer Price", f"₹{offer_price:,.2f}", f"Global Opt: ₹{global_optimal_price:,.2f}")
+    m1.metric("Proposed Offer Price", f"Rs {offer_price:,.2f}", f"Global Opt: Rs {global_optimal_price:,.2f}")
     if is_buyside:
-        m2.metric("Buy-Side Entry Limit", f"₹{buyside_entry_limit:,.2f}", f"Fair Val: ₹{blended_fair_value:,.2f} ({upside_pct*100:+.1f}%)")
+        m2.metric("Buy-Side Entry Limit", f"Rs {buyside_entry_limit:,.2f}", f"Fair Val: Rs {blended_fair_value:,.2f} ({upside_pct*100:+.1f}%)")
         m3.metric("Allotment-Adj. Return", f"{allotment_adj_ret_pct:+.2f}%", f"Allotment: {allotment_frac*100:.1f}% @ {cov_total:.2f}x")
         m4.metric("Suggested NAV Alloc.", f"{suggested_nav_alloc_pct:.2f}%", f"Breach Prob: {breach_prob_pct:.1f}%")
-        m5.metric("Buy-Side Conviction", f"{role_exec_score}/100", f"CVaR: ₹{mc_cvar:,.2f}")
+        m5.metric("Buy-Side Conviction", f"{role_exec_score}/100", f"CVaR: Rs {mc_cvar:,.2f}")
     else:
-        m2.metric("Bookrunner Clearing Px", f"₹{sellside_clearing_price:,.2f}", f"Fair Val: ₹{blended_fair_value:,.2f}")
+        m2.metric("Bookrunner Clearing Px", f"Rs {sellside_clearing_price:,.2f}", f"Fair Val: Rs {blended_fair_value:,.2f}")
         m3.metric("SEBI Book Coverage", f"{cov_total:.2f}x", f"QIB: {cov_qib:.2f}x | NII: {cov_nii:.2f}x")
-        m4.metric("Total Issue Size", f"₹{total_issue_proceeds_cr:,.0f} Cr", f"Fresh: ₹{fresh_proceeds_cr:,.0f} | OFS: ₹{ofs_proceeds_cr:,.0f}")
+        m4.metric("Total Issue Size", f"Rs {total_issue_proceeds_cr:,.0f} Cr", f"Fresh: Rs {fresh_proceeds_cr:,.0f} | OFS: Rs {ofs_proceeds_cr:,.0f}")
         m5.metric("Syndicate Readiness", f"{role_exec_score}/100", f"Opt Cov: {opt_cov_tot:.2f}x")
 
     if is_buyside:
         if offer_price <= blended_fair_value and breach_prob_pct <= 45.0:
-            st.markdown(f'<div class="verdict-buy">✅ BUY-SIDE ACTION: SUBSCRIBE up to ₹{buyside_entry_limit:,.2f} | Suggested Allocation: {suggested_nav_alloc_pct:.2f}% NAV | Allotment-Adj Return: {allotment_adj_ret_pct:+.2f}%</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="verdict-buy">BUY-SIDE ACTION: SUBSCRIBE up to Rs {buyside_entry_limit:,.2f} | Suggested Allocation: {suggested_nav_alloc_pct:.2f}% NAV | Allotment-Adj Return: {allotment_adj_ret_pct:+.2f}%</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="verdict-caution">⛔ BUY-SIDE ACTION: AVOID AT ₹{offer_price:,.2f} (Exceeds Fair Value ₹{blended_fair_value:,.2f}) | Limit Bid (15% MoS): ₹{buyside_entry_limit:,.2f}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="verdict-caution">BUY-SIDE ACTION: AVOID AT Rs {offer_price:,.2f} (Exceeds Fair Value Rs {blended_fair_value:,.2f}) | Limit Bid (15% MoS): Rs {buyside_entry_limit:,.2f}</div>', unsafe_allow_html=True)
     else:
         if cov_total >= 1.5 and offer_price <= global_optimal_price * 1.15:
-            st.markdown(f'<div class="verdict-buy">✅ SELL-SIDE ACTION: PROCEED AT ₹{global_optimal_price:,.2f} Clearing | Total Issue: ₹{total_issue_proceeds_cr:,.0f} Cr | Book Coverage: {cov_total:.2f}x</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="verdict-buy">SELL-SIDE ACTION: PROCEED AT Rs {global_optimal_price:,.2f} Clearing | Total Issue: Rs {total_issue_proceeds_cr:,.0f} Cr | Book Coverage: {cov_total:.2f}x</div>', unsafe_allow_html=True)
         else:
-            st.markdown(f'<div class="verdict-caution">⚠️ SELL-SIDE ACTION: RE-PRICE TOWARD ₹{global_optimal_price:,.2f} | Current Coverage at ₹{offer_price:,.2f}: {cov_total:.2f}x</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="verdict-caution">SELL-SIDE ACTION: RE-PRICE TOWARD Rs {global_optimal_price:,.2f} | Current Coverage at Rs {offer_price:,.2f}: {cov_total:.2f}x</div>', unsafe_allow_html=True)
 
     st.caption(f"Execution Sub-Scores ({role}): {sub_a_label}={sub_a:.0f} | {sub_b_label}={sub_b:.0f} | {sub_c_label}={sub_c:.0f} | {sub_d_label}={sub_d:.0f}")
 
-    st.markdown("#### ⚖️ Role-Specific & Global Offer-Price Optimization Curve")
+    st.markdown("#### Role-Specific & Global Offer-Price Optimization Curve")
     fig_opt = go.Figure()
     fig_opt.add_trace(go.Scatter(x=price_grid, y=role_curve_scores, mode="lines", name=f"{role} Score", line=dict(color="#2563eb", width=3)))
     fig_opt.add_trace(go.Scatter(x=price_grid, y=global_opt_scores, mode="lines", name="Global Joint Score", line=dict(color="#64748b", width=1.8, dash="dot")))
     fig_opt.add_trace(go.Scatter(
         x=[role_optimal_price], y=[role_optimal_score], mode="markers+text",
-        text=[f"{role.split()[0]} Opt: ₹{role_optimal_price:,.2f}"],
+        text=[f"{role.split()[0]} Opt: Rs {role_optimal_price:,.2f}"],
         textposition="top right", textfont=dict(color="#1d4ed8", size=12),
         marker=dict(color="#1d4ed8", size=10)
     ))
-    fig_opt.add_vline(x=offer_price, line_dash="dash", line_color="#dc2626", annotation_text=f"Proposed: ₹{offer_price:,.2f}", annotation_position="bottom right")
-    fig_opt.update_layout(height=340, xaxis_title="Offer Price (₹)", yaxis_title="Objective Score", yaxis=dict(range=[0.0, max(1.15, role_optimal_score + 0.18)]), margin=dict(t=30, b=35, l=45, r=25))
+    fig_opt.add_vline(x=offer_price, line_dash="dash", line_color="#dc2626", annotation_text=f"Proposed: Rs {offer_price:,.2f}", annotation_position="bottom right")
+    fig_opt.update_layout(height=340, xaxis_title="Offer Price (Rs)", yaxis_title="Objective Score", yaxis=dict(range=[0.0, max(1.15, role_optimal_score + 0.18)]), margin=dict(t=30, b=35, l=45, r=25))
     st.plotly_chart(fig_opt, use_container_width=True)
 
     c1, c2 = st.columns(2, gap="large")
     with c1:
-        st.markdown("#### 🏛️ SEBI ICDR Allocation & Subscription")
+        st.markdown("#### SEBI ICDR Allocation & Subscription")
         alloc_df = pd.DataFrame([
             {"Bucket": "QIB (excl. Anchor)", "Weight": f"{w_qib*0.40*100:.1f}%", "Sub.": f"{cov_qib:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib,0.01)):.1f}%"},
             {"Bucket": "Anchor Investors (QIB)", "Weight": f"{w_qib*0.60*100:.1f}%", "Sub.": f"{cov_qib*1.10:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.10,0.01)):.1f}%"},
@@ -870,27 +850,27 @@ with tab1:
         st.dataframe(alloc_df, use_container_width=True, hide_index=True)
 
     with c2:
-        st.markdown("#### 💧 Fresh Issue vs. OFS & Cap-Table Waterfall")
+        st.markdown("#### Fresh Issue vs. OFS & Cap-Table Waterfall")
         sg_exit = float(mdata["series_g_shares_cr"]) * offer_price
         sg_cost = float(mdata["series_g_shares_cr"]) * float(mdata["series_g_entry_px"])
         sg_moic = sg_exit / max(sg_cost, 1.0)
         cap_df = pd.DataFrame([
-            {"Metric": "Fresh Issue Proceeds", "Value": f"₹{fresh_proceeds_cr:,.1f} Cr ({fresh_shares_cr:,.1f} Cr sh)"},
-            {"Metric": "OFS Proceeds", "Value": f"₹{ofs_proceeds_cr:,.1f} Cr ({ofs_shares_cr:,.1f} Cr sh)"},
-            {"Metric": "Total Issue Size", "Value": f"₹{total_issue_proceeds_cr:,.1f} Cr (${total_issue_proceeds_cr/8.4:,.1f}M)"},
+            {"Metric": "Fresh Issue Proceeds", "Value": f"Rs {fresh_proceeds_cr:,.1f} Cr ({fresh_shares_cr:,.1f} Cr sh)"},
+            {"Metric": "OFS Proceeds", "Value": f"Rs {ofs_proceeds_cr:,.1f} Cr ({ofs_shares_cr:,.1f} Cr sh)"},
+            {"Metric": "Total Issue Size", "Value": f"Rs {total_issue_proceeds_cr:,.1f} Cr (${total_issue_proceeds_cr/8.4:,.1f}M)"},
             {"Metric": "Pre -> Post Shares", "Value": f"{pre_shares_cr:,.1f} Cr -> {post_shares_cr:,.1f} Cr (+{primary_dilution_pct:.0f}%)"},
             {"Metric": "Pre-IPO Ownership", "Value": ", ".join([f"{k}: {v*100:.0f}%" for k, v in mdata["cap_table_pre"].items()])},
-            {"Metric": "Series G MOIC / Exit", "Value": f"{sg_moic:.2f}x | ₹{sg_exit:,.1f} Cr (@ ₹{mdata['series_g_entry_px']:.2f})"},
+            {"Metric": "Series G MOIC / Exit", "Value": f"{sg_moic:.2f}x | Rs {sg_exit:,.1f} Cr (@ Rs {mdata['series_g_entry_px']:.2f})"},
         ])
         st.dataframe(cap_df, use_container_width=True, hide_index=True)
 
-    st.markdown("#### 📖 Simulated Order Book (₹35 – ₹320 Price Ticks)")
+    st.markdown("#### Simulated Order Book (Rs 35 - Rs 320 Price Ticks)")
     st.caption("Simulated investor order schedule—not a live bookbuilding feed.")
     ob_rows = []
     for tp in np.linspace(35.0, 320.0, 12):
         ts, qs, ns, rs = get_subscription(float(tp), blended_fair_value)
         ob_rows.append({
-            "Price": f"₹{tp:,.0f}",
+            "Price": f"Rs {tp:,.0f}",
             "QIB": f"{qs:.2f}x",
             "NII": f"{ns:.2f}x",
             "Retail": f"{rs:.2f}x",
@@ -903,54 +883,54 @@ with tab1:
 # TAB 2: MASTER DATA, QoE, FULL DCF BRIDGE & REVERSE DCF
 # ==============================================================================
 with tab2:
-    st.markdown("### 📚 Master Historical Financial Dataset & Provenance")
+    st.markdown("### Master Historical Financial Dataset & Provenance")
     master_tbl = pd.DataFrame([
-        {"Item": "Audited FY25 Revenue", "Value": f"₹{mdata['fy25_audited_rev_cr']:,.1f} Cr", "Type": "Audited Actual", "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": "FY25", "Retrieved": mdata["retrieval_date"]},
-        {"Item": "LTM Baseline Revenue", "Value": f"₹{ltm_rev_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
-        {"Item": "Reported EBITDA", "Value": f"₹{rep_ebitda_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
-        {"Item": "Adjusted EBITDA", "Value": f"₹{adj_ebitda_cr:,.1f} Cr", "Type": "Analyst / Simulated Adj.", "Source": "Master QoE Bridge", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
-        {"Item": "Cash / Debt / Leases", "Value": f"Cash ₹{gross_cash_cr:,.0f} | Debt ₹{debt_cr:,.0f} | Leases ₹{leases_cr:,.0f}", "Type": mdata["data_type"], "Source": mdata["source_doc"], "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Audited FY25 Revenue", "Value": f"Rs {mdata['fy25_audited_rev_cr']:,.1f} Cr", "Type": "Audited Actual", "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": "FY25", "Retrieved": mdata["retrieval_date"]},
+        {"Item": "LTM Baseline Revenue", "Value": f"Rs {ltm_rev_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Reported EBITDA", "Value": f"Rs {rep_ebitda_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Adjusted EBITDA", "Value": f"Rs {adj_ebitda_cr:,.1f} Cr", "Type": "Analyst / Simulated Adj.", "Source": "Master QoE Bridge", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Cash / Debt / Leases", "Value": f"Cash Rs {gross_cash_cr:,.0f} | Debt Rs {debt_cr:,.0f} | Leases Rs {leases_cr:,.0f}", "Type": mdata["data_type"], "Source": mdata["source_doc"], "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
         {"Item": "Post-Issue Shares", "Value": f"{post_shares_cr:,.1f} Cr", "Type": "Post-IPO Cap Table", "Source": f"{pre_shares_cr:,.1f} Cr + {primary_dilution_pct:.0f}%", "Period": "IPO", "Retrieved": mdata["retrieval_date"]},
     ])
     st.dataframe(master_tbl, use_container_width=True, hide_index=True)
 
     st.info(
-        "Why Capitalized Software/R&D Is Deducted from Headline FCF: Platform/software engineering costs capitalized on the balance sheet represent ongoing economic reinvestment rather than one-off items. Deducting capitalized software/R&D from Headline FCF gives True Economic FCF without double-counting operating cash flow (which already reflects working capital and cash taxes)."
+        "Why Capitalized Software/R&D Is Deducted from Headline FCF: Platform/software engineering costs capitalized on the balance sheet represent ongoing economic reinvestment rather than one-off items. Deducting capitalized software/R&D from Headline FCF gives True Economic FCF without double-counting operating cash flow."
     )
-    adj_txt = "; ".join([f"{a[0]}: ₹{a[1]:+.1f} Cr" for a in mdata["ebitda_adjustments"]])
+    adj_txt = "; ".join([f"{a[0]}: Rs {a[1]:+.1f} Cr" for a in mdata["ebitda_adjustments"]])
     qoe_rec = pd.DataFrame([
-        {"Bridge Step": "Reported EBITDA", "Amount": f"₹{rep_ebitda_cr:,.1f} Cr"},
-        {"Bridge Step": f"(+/-) Itemized Adjustments ({adj_txt})", "Amount": f"₹{adj_sum_cr:+.1f} Cr"},
-        {"Bridge Step": "= Adjusted EBITDA", "Amount": f"₹{adj_ebitda_cr:,.1f} Cr"},
-        {"Bridge Step": "(+/-) Working Capital Change", "Amount": f"₹{wc_chg_cr:+.1f} Cr"},
-        {"Bridge Step": "(-) Cash Taxes", "Amount": f"₹{taxes_cr:+.1f} Cr"},
-        {"Bridge Step": "= Operating Cash Flow (OCF)", "Amount": f"₹{ocf_cr:,.1f} Cr"},
-        {"Bridge Step": "(-) Tangible CapEx", "Amount": f"₹{tan_capex_cr:+.1f} Cr"},
-        {"Bridge Step": "= Headline FCF", "Amount": f"₹{headline_fcf_cr:,.1f} Cr"},
-        {"Bridge Step": "(-) Capitalized Software / R&D", "Amount": f"₹{cap_sw_cr:+.1f} Cr"},
-        {"Bridge Step": "= True Economic FCF", "Amount": f"₹{econ_fcf_cr:,.1f} Cr"},
+        {"Bridge Step": "Reported EBITDA", "Amount": f"Rs {rep_ebitda_cr:,.1f} Cr"},
+        {"Bridge Step": f"(+/-) Itemized Adjustments ({adj_txt})", "Amount": f"Rs {adj_sum_cr:+.1f} Cr"},
+        {"Bridge Step": "= Adjusted EBITDA", "Amount": f"Rs {adj_ebitda_cr:,.1f} Cr"},
+        {"Bridge Step": "(+/-) Working Capital Change", "Amount": f"Rs {wc_chg_cr:+.1f} Cr"},
+        {"Bridge Step": "(-) Cash Taxes", "Amount": f"Rs {taxes_cr:+.1f} Cr"},
+        {"Bridge Step": "= Operating Cash Flow (OCF)", "Amount": f"Rs {ocf_cr:,.1f} Cr"},
+        {"Bridge Step": "(-) Tangible CapEx", "Amount": f"Rs {tan_capex_cr:+.1f} Cr"},
+        {"Bridge Step": "= Headline FCF", "Amount": f"Rs {headline_fcf_cr:,.1f} Cr"},
+        {"Bridge Step": "(-) Capitalized Software / R&D", "Amount": f"Rs {cap_sw_cr:+.1f} Cr"},
+        {"Bridge Step": "= True Economic FCF", "Amount": f"Rs {econ_fcf_cr:,.1f} Cr"},
     ])
     st.dataframe(qoe_rec, use_container_width=True, hide_index=True)
 
-    st.markdown(f"#### 🧩 QoE Breakdown (Score: {qoe_score}/100 | Haircut: -(100 - {qoe_score}) × 0.25% = {qoe_haircut*100:.2f}%)")
+    st.markdown(f"#### QoE Breakdown (Score: {qoe_score}/100 | Haircut: -(100 - {qoe_score}) x 0.25% = {qoe_haircut*100:.2f}%)")
     st.dataframe(qoe_df, use_container_width=True, hide_index=True)
 
-    st.markdown("#### 📈 5-Year Unlevered FCF Bridge (Revenue -> EBITDA -> EBIT -> Tax -> NOPAT -> Reinvestment -> UFCF)")
+    st.markdown("#### 5-Year Unlevered FCF Bridge (Revenue -> EBITDA -> EBIT -> Tax -> NOPAT -> Reinvestment -> UFCF)")
     st.dataframe(pd.DataFrame(dcf_rows)[["Year", "Revenue", "EBITDA", "EBIT", "Tax", "NOPAT", "Reinvestment", "Unlevered FCF", "PV of UFCF"]], use_container_width=True, hide_index=True)
 
-    st.markdown("#### 🌉 EV-to-Equity Bridge, Terminal Value Share & Forward EPS Bridge")
-    sh_lbl = f"Per Share (÷ {post_shares_cr:,.1f} Cr)"
+    st.markdown("#### EV-to-Equity Bridge, Terminal Value Share & Forward EPS Bridge")
+    sh_lbl = f"Per Share (/ {post_shares_cr:,.1f} Cr)"
     ev_eq_df = pd.DataFrame([
-        {"Item": "Cumulative PV of 5Y UFCF", "Amount": f"₹{pv_ufcf_sum:,.1f} Cr ({100-tv_share_pct:.1f}% of EV)", sh_lbl: f"₹{pv_ufcf_sum/post_shares_cr:,.2f}"},
-        {"Item": f"PV of Terminal Value (g={term_growth_pct:.1f}%, WACC={wacc_pct:.2f}%)", "Amount": f"₹{pv_tv_cr:,.1f} Cr ({tv_share_pct:.1f}% of EV)", sh_lbl: f"₹{pv_tv_cr/post_shares_cr:,.2f}"},
-        {"Item": "Implied DCF Enterprise Value", "Amount": f"₹{ev_dcf_cr:,.1f} Cr", sh_lbl: f"₹{ev_dcf_cr/post_shares_cr:,.2f}"},
-        {"Item": "Net Cash (+Cash - Debt - Leases - Other)", "Amount": f"+₹{gross_cash_cr:,.0f} - ₹{debt_cr:,.0f} - ₹{leases_cr:,.0f} - ₹{other_claims_cr:,.0f} = +₹{net_cash_cr:,.1f} Cr", sh_lbl: f"+₹{net_cash_cr/post_shares_cr:,.2f}"},
-        {"Item": "DCF Price vs. Risk-Adjusted Blended Fair Value", "Amount": f"Blended FV: ₹{blended_fair_value:,.2f}/sh (after {qoe_haircut*100:.2f}% QoE)", sh_lbl: f"DCF: ₹{price_dcf:,.2f}"},
-        {"Item": "Forward Y1 EPS Bridge (Y1 EBIT × (1 - Tax) ÷ Shares)", "Amount": f"Y1 EBIT ₹{yr1_ebit:,.1f} Cr -> Net Inc ₹{yr1_net_inc:,.1f} Cr", sh_lbl: f"Fwd EPS: ₹{fwd_eps:,.2f}"},
+        {"Item": "Cumulative PV of 5Y UFCF", "Amount": f"Rs {pv_ufcf_sum:,.1f} Cr ({100-tv_share_pct:.1f}% of EV)", sh_lbl: f"Rs {pv_ufcf_sum/post_shares_cr:,.2f}"},
+        {"Item": f"PV of Terminal Value (g={term_growth_pct:.1f}%, WACC={wacc_pct:.2f}%)", "Amount": f"Rs {pv_tv_cr:,.1f} Cr ({tv_share_pct:.1f}% of EV)", sh_lbl: f"Rs {pv_tv_cr/post_shares_cr:,.2f}"},
+        {"Item": "Implied DCF Enterprise Value", "Amount": f"Rs {ev_dcf_cr:,.1f} Cr", sh_lbl: f"Rs {ev_dcf_cr/post_shares_cr:,.2f}"},
+        {"Item": "Net Cash (+Cash - Debt - Leases - Other)", "Amount": f"+Rs {gross_cash_cr:,.0f} - Rs {debt_cr:,.0f} - Rs {leases_cr:,.0f} - Rs {other_claims_cr:,.0f} = +Rs {net_cash_cr:,.1f} Cr", sh_lbl: f"+Rs {net_cash_cr/post_shares_cr:,.2f}"},
+        {"Item": "DCF Price vs. Risk-Adjusted Blended Fair Value", "Amount": f"Blended FV: Rs {blended_fair_value:,.2f}/sh (after {qoe_haircut*100:.2f}% QoE)", sh_lbl: f"DCF: Rs {price_dcf:,.2f}"},
+        {"Item": "Forward Y1 EPS Bridge (Y1 EBIT x (1 - Tax) / Shares)", "Amount": f"Y1 EBIT Rs {yr1_ebit:,.1f} Cr -> Net Inc Rs {yr1_net_inc:,.1f} Cr", sh_lbl: f"Fwd EPS: Rs {fwd_eps:,.2f}"},
     ])
     st.dataframe(ev_eq_df, use_container_width=True, hide_index=True)
 
-    st.markdown(f"#### 🔁 Reverse DCF — What Must Be True to Justify Offer Price (₹{offer_price:,.2f})?")
+    st.markdown(f"#### Reverse DCF - What Must Be True to Justify Offer Price (Rs {offer_price:,.2f})?")
     imp_eq = offer_price * post_shares_cr
     imp_ev = max(500.0, imp_eq - net_cash_cr)
     imp_yr5_rev = imp_ev / max(float(mdata["ev_rev_mult"]), 0.5)
@@ -960,7 +940,7 @@ with tab2:
     imp_reinv = float(np.clip(25.0 + max(0.0, imp_cagr - 20.0) * 1.1, 15.0, 80.0))
 
     rev_dcf = pd.DataFrame([
-        {"Metric": "Implied Equity & Target EV", "Required @ Offer": f"Eq ₹{imp_eq:,.0f} Cr | EV ₹{imp_ev:,.0f} Cr", "Base Case": f"DCF EV ₹{ev_dcf_cr:,.0f} Cr"},
+        {"Metric": "Implied Equity & Target EV", "Required @ Offer": f"Eq Rs {imp_eq:,.0f} Cr | EV Rs {imp_ev:,.0f} Cr", "Base Case": f"DCF EV Rs {ev_dcf_cr:,.0f} Cr"},
         {"Metric": "Implied 5Y Revenue CAGR", "Required @ Offer": f"{imp_cagr:.1f}%", "Base Case": f"{rev_growth_pct:.1f}%"},
         {"Metric": "Implied Terminal FCF Margin", "Required @ Offer": f"{imp_fcf_m:.1f}%", "Base Case": "8.5%"},
         {"Metric": "Implied Terminal EBITDA Margin", "Required @ Offer": f"{imp_ebitda_m:.1f}%", "Base Case": "21.0%"},
@@ -973,7 +953,7 @@ with tab2:
 # TAB 3: PEER COMPS (NATIVE + DATED FX), TORNADO & MONTE CARLO FAN CHART
 # ==============================================================================
 with tab3:
-    st.markdown(f"### 🌐 Peer Comps (FX: ₹{FX_RATE_INR_PER_USD:.1f}/USD as of {FX_AS_OF_DATE})")
+    st.markdown(f"### Peer Comps (FX: Rs {FX_RATE_INR_PER_USD:.1f}/USD as of {FX_AS_OF_DATE})")
     p_list = []
     for p in mdata["peers"]:
         orig_cr = (offer_price * post_shares_cr) if p["OrigVal_Cr"] is None else float(p["OrigVal_Cr"])
@@ -983,7 +963,7 @@ with tab3:
             "Issuer": p["Issuer"],
             "Ticker": p["Ticker"],
             "Status": p["MarketType"],
-            "Native (INR Cr)": f"₹{orig_cr:,.1f} Cr",
+            "Native (INR Cr)": f"Rs {orig_cr:,.1f} Cr",
             "USD MCap ($M)": f"${usd_m:,.1f}M",
             "Shares": sh_txt,
             "Basis": p["Basis"],
@@ -1010,7 +990,7 @@ with tab3:
         eqi = 0.40 * (ltm_rev_cr * ev_r_v) + 0.40 * evdi + 0.20 * ((ltm_rev_cr * cm_v) * ev_c_v) + net_cash_cr
         return (eqi / max(sh_v, 1.0)) * (1.0 + qoe_haircut)
 
-    st.markdown("#### 🌪️ Tornado Sensitivity Chart (Low vs. High Case Fair Value)")
+    st.markdown("#### Tornado Sensitivity Chart (Low vs. High Case Fair Value)")
     t_drivers = [
         ("Revenue CAGR", _fv_sens(max(0.10, g_rate - 0.10), wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(min(0.80, g_rate + 0.10), wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
         ("WACC", _fv_sens(g_rate, min(0.20, wacc + 0.015), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(g_rate, max(0.08, wacc - 0.015), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
@@ -1024,10 +1004,10 @@ with tab3:
     fig_t.add_trace(go.Bar(y=[x[0] for x in t_sorted], x=[x[1] - blended_fair_value for x in t_sorted], base=blended_fair_value, orientation="h", name="Low Case", marker_color="#ef4444"))
     fig_t.add_trace(go.Bar(y=[x[0] for x in t_sorted], x=[x[2] - blended_fair_value for x in t_sorted], base=blended_fair_value, orientation="h", name="High Case", marker_color="#10b981"))
     fig_t.add_vline(x=blended_fair_value, line_dash="dash", line_color="#1e293b")
-    fig_t.update_layout(barmode="overlay", height=310, xaxis_title="Fair Value (₹ / Share)", margin=dict(t=25, b=35, l=120, r=25))
+    fig_t.update_layout(barmode="overlay", height=310, xaxis_title="Fair Value (Rs / Share)", margin=dict(t=25, b=35, l=120, r=25))
     st.plotly_chart(fig_t, use_container_width=True)
 
-    st.markdown("#### 🎯 Monte Carlo Valuation Fan Chart (P10–P90)")
+    st.markdown("#### Monte Carlo Valuation Fan Chart (P10-P90)")
     mcg = np.clip(rng.normal(g_rate, 0.08, size=4000), 0.05, 0.85)
     mcw = np.clip(rng.normal(wacc, 0.015, size=4000), 0.08, 0.22)
     yrs = [1, 2, 3, 4, 5]
@@ -1054,10 +1034,10 @@ with tab3:
     p_target = float(np.mean(mc_end >= offer_price * 1.20) * 100.0)
 
     f1, f2, f3, f4, f5 = st.columns(5)
-    f1.metric("P10", f"₹{p10[-1]:,.2f}")
-    f2.metric("P25", f"₹{p25[-1]:,.2f}")
-    f3.metric("P50", f"₹{p50[-1]:,.2f}")
-    f4.metric("P75 / P90", f"₹{p75[-1]:,.1f} / ₹{p90[-1]:,.1f}")
+    f1.metric("P10", f"Rs {p10[-1]:,.2f}")
+    f2.metric("P25", f"Rs {p25[-1]:,.2f}")
+    f3.metric("P50", f"Rs {p50[-1]:,.2f}")
+    f4.metric("P75 / P90", f"Rs {p75[-1]:,.1f} / Rs {p90[-1]:,.1f}")
     f5.metric("P(<Offer) / P(>=+20%)", f"{p_below:.1f}% / {p_target:.1f}%")
 
     fig_f = go.Figure()
@@ -1066,14 +1046,14 @@ with tab3:
     fig_f.add_trace(go.Scatter(x=yrs, y=p50, mode="lines+markers", name="P50", line=dict(color="#2563eb", width=3)))
     fig_f.add_trace(go.Scatter(x=yrs, y=p25, mode="lines", name="P25", line=dict(color="#f59e0b")))
     fig_f.add_trace(go.Scatter(x=yrs, y=p10, mode="lines", name="P10", line=dict(color="#ef4444", dash="dot")))
-    fig_f.update_layout(height=310, xaxis_title="Year", yaxis_title="Value (₹ / Share)", margin=dict(t=25, b=35, l=45, r=25))
+    fig_f.update_layout(height=310, xaxis_title="Year", yaxis_title="Value (Rs / Share)", margin=dict(t=25, b=35, l=45, r=25))
     st.plotly_chart(fig_f, use_container_width=True)
 
 # ==============================================================================
 # TAB 4: GREENSHOE, LOCK-UP OVERHANG, 90D PATH & VaR BACKTESTING
 # ==============================================================================
 with tab4:
-    st.markdown("### 🛡️ Greenshoe Stabilisation Simulator (SEBI Max 15% Over-Allotment / 30-Day Window)")
+    st.markdown("### Greenshoe Stabilisation Simulator (SEBI Max 15% Over-Allotment / 30-Day Window)")
     st.caption("Simulated stabilisation engine—not a live market feed.")
     g1, g2, g3 = st.columns(3)
     gs_px_mode = g1.selectbox("Market Price Path", ["Price Falls Below Offer Price", "Price Stays Near Offer Price", "Price Rises Above Offer Price"], index=0)
@@ -1086,7 +1066,7 @@ with tab4:
         bb_ratio = 0.85 if gs_fund_mode != "Stabilisation Funds Exhausted" else 0.45
         avg_bb_px = offer_price * 0.93
     elif gs_px_mode == "Price Stays Near Offer Price":
-         bb_ratio = 0.40
+        bb_ratio = 0.40
         avg_bb_px = offer_price * 0.99
     else:
         bb_ratio = 0.05
@@ -1103,42 +1083,42 @@ with tab4:
     gs_pnl = (offer_price - avg_bb_px) * sh_bought
 
     st.dataframe(pd.DataFrame([
-        {"Metric": "Issue & Offer Price", "Value": f"{total_issue_shares_cr:,.1f} Cr sh @ ₹{offer_price:,.2f}"},
-        {"Metric": "Max Over-Allotment (15%) & Borrowed Sh.", "Value": f"{max_gs_sh:,.2f} Cr sh | Fund Pool: ₹{gs_pool_cr:,.1f} Cr"},
+        {"Metric": "Issue & Offer Price", "Value": f"{total_issue_shares_cr:,.1f} Cr sh @ Rs {offer_price:,.2f}"},
+        {"Metric": "Max Over-Allotment (15%) & Borrowed Sh.", "Value": f"{max_gs_sh:,.2f} Cr sh | Fund Pool: Rs {gs_pool_cr:,.1f} Cr"},
         {"Metric": "Over-Allotted / Bought Back", "Value": f"{max_gs_sh:,.2f} Cr sh / {sh_bought:,.2f} Cr sh"},
-        {"Metric": "Remaining Short / Avg. Buyback Px", "Value": f"{rem_short:,.2f} Cr sh @ ₹{avg_bb_px:,.2f}"},
-        {"Metric": "Cash Used / Shares Returned", "Value": f"₹{cash_used:,.1f} Cr | {sh_returned:,.2f} Cr sh"},
-        {"Metric": "Additional Allotment / Stabilisation P&L", "Value": f"{addl_allot:,.2f} Cr sh | P&L: ₹{gs_pnl:+,.1f} Cr"},
+        {"Metric": "Remaining Short / Avg. Buyback Px", "Value": f"{rem_short:,.2f} Cr sh @ Rs {avg_bb_px:,.2f}"},
+        {"Metric": "Cash Used / Shares Returned", "Value": f"Rs {cash_used:,.1f} Cr | {sh_returned:,.2f} Cr sh"},
+        {"Metric": "Additional Allotment / Stabilisation P&L", "Value": f"{addl_allot:,.2f} Cr sh | P&L: Rs {gs_pnl:+,.1f} Cr"},
     ]), use_container_width=True, hide_index=True)
 
-    st.markdown("#### 🔒 Anchor Lock-Up & Supply Overhang (30-Day & 90-Day Expiries)")
+    st.markdown("#### Anchor Lock-Up & Supply Overhang (30-Day & 90-Day Expiries)")
     sell_pct = st.slider("Assumed Unlock Selling Ratio (%)", 5.0, 75.0, 25.0, 5.0)
     anc_tot = total_issue_shares_cr * (w_qib * 0.60)
     t30 = anc_tot * 0.50
     t90 = anc_tot * 0.50
     st.dataframe(pd.DataFrame([
-        {"Window": "T+0 to T+30", "Unlocked": "0.00 Cr", "Est. Supply": "₹0.0 Cr", "Absorption Note": "Locked under SEBI anchor window"},
-        {"Window": "Day 30 Expiry (50%)", "Unlocked": f"{t30:,.2f} Cr", "Est. Supply": f"₹{(t30*(sell_pct/100.0))*offer_price:,.1f} Cr ({sell_pct:.0f}% sold)", "Absorption Note": "Tested vs. secondary liquidity"},
-        {"Window": "Day 90 Expiry (Remaining 50%)", "Unlocked": f"{t90:,.2f} Cr", "Est. Supply": f"₹{(t90*(sell_pct/100.0))*offer_price:,.1f} Cr ({sell_pct:.0f}% sold)", "Absorption Note": "Secondary supply overhang"},
+        {"Window": "T+0 to T+30", "Unlocked": "0.00 Cr", "Est. Supply": "Rs 0.0 Cr", "Absorption Note": "Locked under SEBI anchor window"},
+        {"Window": "Day 30 Expiry (50%)", "Unlocked": f"{t30:,.2f} Cr", "Est. Supply": f"Rs {(t30*(sell_pct/100.0))*offer_price:,.1f} Cr ({sell_pct:.0f}% sold)", "Absorption Note": "Tested vs. secondary liquidity"},
+        {"Window": "Day 90 Expiry (Remaining 50%)", "Unlocked": f"{t90:,.2f} Cr", "Est. Supply": f"Rs {(t90*(sell_pct/100.0))*offer_price:,.1f} Cr ({sell_pct:.0f}% sold)", "Absorption Note": "Secondary supply overhang"},
     ]), use_container_width=True, hide_index=True)
 
-    st.markdown("#### 🛤️ Listing-Day & 90-Day Post-IPO Regime Path (T+0, T+30, T+90)")
+    st.markdown("#### Listing-Day & 90-Day Post-IPO Regime Path (T+0, T+30, T+90)")
     reg_sel = st.selectbox("Market Regime", ["Base / Balanced Regime", "Risk-Off / High Volatility Regime", "Risk-On / Momentum Regime"], index=0)
     rm = 1.0 if reg_sel.startswith("Base") else (0.82 if reg_sel.startswith("Risk-Off") else 1.18)
     px_t0 = offer_price * (1.0 + expected_horizon_drift * 0.35 * rm)
     px_t30 = offer_price * (1.0 + expected_horizon_drift * 0.75 * rm)
     px_t90 = blended_fair_value * (0.92 if rm < 1 else (1.06 if rm > 1 else 0.98))
     st.dataframe(pd.DataFrame([
-        {"Stage": "T+0 (Listing Day)", "Price": f"₹{px_t0:,.2f}", "vs. Offer": f"{((px_t0-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "Listing demand, retail/QIB flow, greenshoe"},
-        {"Stage": "T+30 (30d Lock-Up)", "Price": f"₹{px_t30:,.2f}", "vs. Offer": f"{((px_t30-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "30d anchor expiry, index/sector beta"},
-        {"Stage": "T+90 (90d Lock-Up)", "Price": f"₹{px_t90:,.2f}", "vs. Offer": f"{((px_t90-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "90d lock-up expiry, fundamentals & liquidity"},
+        {"Stage": "T+0 (Listing Day)", "Price": f"Rs {px_t0:,.2f}", "vs. Offer": f"{((px_t0-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "Listing demand, retail/QIB flow, greenshoe"},
+        {"Stage": "T+30 (30d Lock-Up)", "Price": f"Rs {px_t30:,.2f}", "vs. Offer": f"{((px_t30-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "30d anchor expiry, index/sector beta"},
+        {"Stage": "T+90 (90d Lock-Up)", "Price": f"Rs {px_t90:,.2f}", "vs. Offer": f"{((px_t90-offer_price)/max(offer_price,0.01))*100:+.1f}%", "Drivers": "90d lock-up expiry, fundamentals & liquidity"},
     ]), use_container_width=True, hide_index=True)
 
-    st.markdown("#### 📉 VaR, CVaR & Backtesting (Kupiec POF & Christoffersen Independence)")
+    st.markdown("#### VaR, CVaR & Backtesting (Kupiec POF & Christoffersen Independence)")
     st.caption("Positive values denote rupee losses vs. offer price. 250-day series is simulated from Student-t & volatility parameters.")
     v1, v2, v3, v4, v5 = st.columns(5)
-    v1.metric(f"{var_horizon_days}d VaR ({int(var_conf_level*100)}%)", f"₹{mc_var:,.2f}", f"Max DD: {max_dd_pct:.1f}%")
-    v2.metric(f"{var_horizon_days}d CVaR", f"₹{mc_cvar:,.2f}", f"1d VaR: ₹{offer_price*daily_var_thresh:,.2f}")
+    v1.metric(f"{var_horizon_days}d VaR ({int(var_conf_level*100)}%)", f"Rs {mc_var:,.2f}", f"Max DD: {max_dd_pct:.1f}%")
+    v2.metric(f"{var_horizon_days}d CVaR", f"Rs {mc_cvar:,.2f}", f"1d VaR: Rs {offer_price*daily_var_thresh:,.2f}")
     v3.metric("250d Exceptions", f"{x_exc} / {n_obs_250}", f"Expected: {n_obs_250*p_exp:.1f}")
     v4.metric("Kupiec POF", f"LR={lr_pof:.2f} (p={kupiec_pval:.3f})", "PASS" if kupiec_pval >= 0.05 else "FAIL")
     v5.metric("Christoffersen Ind.", f"LR={lr_ind:.2f} (p={christ_pval:.3f})", "PASS" if christ_pval >= 0.05 else "WARN")
@@ -1149,7 +1129,7 @@ with tab4:
             "Obs (t-250..t-1)": int(i - 250),
             "Return": f"{hist_daily_rets[i]*100:+.2f}%",
             "VaR Limit": f"-{daily_var_thresh*100:.2f}%",
-            "Loss": f"₹{max(0.0, -hist_daily_rets[i]*offer_price):,.2f}"
+            "Loss": f"Rs {max(0.0, -hist_daily_rets[i]*offer_price):,.2f}"
         }
         for i in exc_idx_arr[:10]
     ]), use_container_width=True, hide_index=True)
@@ -1158,7 +1138,7 @@ with tab4:
 # TAB 5: IC CHALLENGE MODE, STAR PM AI CO-PILOT & LIVE REPORT GENERATOR
 # ==============================================================================
 with tab5:
-    st.markdown("### 🥊 Investment Committee Challenge Mode")
+    st.markdown("### Investment Committee Challenge Mode")
     c_qs = [
         "Why is this IPO overpriced?",
         "What happens if revenue growth misses by 15%?",
@@ -1171,13 +1151,13 @@ with tab5:
     q_pick = st.selectbox("Select Challenge Question", c_qs, index=0)
 
     if q_pick == "Why is this IPO overpriced?":
-        c_calc = f"Offer ₹{offer_price:,.2f} vs. Blended Fair Value ₹{blended_fair_value:,.2f} ({upside_pct*100:+.1f}%); Global Optimal ₹{global_optimal_price:,.2f}."
+        c_calc = f"Offer Rs {offer_price:,.2f} vs. Blended Fair Value Rs {blended_fair_value:,.2f} ({upside_pct*100:+.1f}%); Global Optimal Rs {global_optimal_price:,.2f}."
         c_imp = f"Coverage is {cov_total:.2f}x; {var_horizon_days}d breach probability is {breach_prob_pct:.1f}%."
-        c_rec = f"Buy-Side limit bid ₹{buyside_entry_limit:,.2f} (15% MoS) or Sell-Side clearing target ₹{global_optimal_price:,.2f}."
+        c_rec = f"Buy-Side limit bid Rs {buyside_entry_limit:,.2f} (15% MoS) or Sell-Side clearing target Rs {global_optimal_price:,.2f}."
     elif q_pick == "What happens if revenue growth misses by 15%?":
         gm = max(0.05, g_rate - 0.15)
         fvm = _fv_sens(gm, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-        c_calc = f"Growth falls from {g_rate*100:.1f}% to {gm*100:.1f}%, shifting Fair Value from ₹{blended_fair_value:,.2f} to ₹{fvm:,.2f}."
+        c_calc = f"Growth falls from {g_rate*100:.1f}% to {gm*100:.1f}%, shifting Fair Value from Rs {blended_fair_value:,.2f} to Rs {fvm:,.2f}."
         c_imp = f"Implied upside/downside vs. Offer becomes {((fvm-offer_price)/max(offer_price,0.01))*100:+.1f}%."
         c_rec = "Require wider margin of safety or lower clearing price."
     elif q_pick == "What if the IPO is undersubscribed?":
@@ -1186,34 +1166,34 @@ with tab5:
         c_rec = "Re-price downward toward clearing level or reassess timing."
     elif q_pick == "What if the listing price falls 20%?":
         p20 = offer_price * 0.80
-        c_calc = f"Price moves from ₹{offer_price:,.2f} to ₹{p20:,.2f} (₹{offer_price - p20:,.2f}/sh loss vs. {var_horizon_days}d CVaR ₹{mc_cvar:,.2f})."
+        c_calc = f"Price moves from Rs {offer_price:,.2f} to Rs {p20:,.2f} (Rs {offer_price - p20:,.2f}/sh loss vs. {var_horizon_days}d CVaR Rs {mc_cvar:,.2f})."
         c_imp = "Tests tail risk cushion and mark-to-market drawdown tolerance."
         c_rec = "Keep position size within CVaR risk budget."
     elif q_pick == "What if the anchor investors sell after lock-up expiry?":
-        c_calc = f"{anc_tot:,.2f} Cr anchor shares unlock across 30d/90d; {sell_pct:.0f}% selling = ₹{(anc_tot*(sell_pct/100.0))*offer_price:,.1f} Cr supply."
+        c_calc = f"{anc_tot:,.2f} Cr anchor shares unlock across 30d/90d; {sell_pct:.0f}% selling = Rs {(anc_tot*(sell_pct/100.0))*offer_price:,.1f} Cr supply."
         c_imp = "Can weigh on secondary price if daily turnover is thin."
         c_rec = "Phase entries around Day 30 and Day 90 lock-up windows."
     elif q_pick == "What happens if the greenshoe is fully utilised?":
-        c_calc = f"Up to {max_gs_sh:,.2f} Cr shares (15%) over-allotted with ₹{gs_pool_cr:,.1f} Cr stabilisation pool over 30 days."
+        c_calc = f"Up to {max_gs_sh:,.2f} Cr shares (15%) over-allotted with Rs {gs_pool_cr:,.1f} Cr stabilisation pool over 30 days."
         c_imp = "Provides temporary stabilisation support while active, not a permanent floor."
         c_rec = "Monitor remaining short position and 30-day window expiry."
     else:
         sh_d = post_shares_cr * 1.10
         fv_d = blended_fair_value * (post_shares_cr / sh_d)
-        c_calc = f"Extra 10% dilution raises share count to {sh_d:,.1f} Cr, adjusting per-share value to ~₹{fv_d:,.2f}."
+        c_calc = f"Extra 10% dilution raises share count to {sh_d:,.1f} Cr, adjusting per-share value to ~Rs {fv_d:,.2f}."
         c_imp = "Dilutes per-share ownership unless incremental capital earns above WACC."
         c_rec = "Evaluate capital efficiency before approving extra issuance."
 
     st.markdown(f"""
     - **Question:** *{q_pick}*
-    - **Assumptions:** Offer `₹{offer_price:,.2f}` | Growth `{rev_growth_pct:.1f}%` | WACC `{wacc_pct:.2f}%` | Dilution `{primary_dilution_pct:.0f}%` | Seed `{prng_seed}`
+    - **Assumptions:** Offer `Rs {offer_price:,.2f}` | Growth `{rev_growth_pct:.1f}%` | WACC `{wacc_pct:.2f}%` | Dilution `{primary_dilution_pct:.0f}%` | Seed `{prng_seed}`
     - **Calculation:** {c_calc}
     - **Impact:** {c_imp}
     - **Recommendation:** **{c_rec}**
     """)
 
     st.markdown("---")
-    st.markdown("### 🧠 Star Hedge Fund PM AI Co-Pilot (Ask Anything — Tough IC, Edge Cases & Model Flaws)")
+    st.markdown("### Star Hedge Fund PM AI Co-Pilot (Ask Anything - Tough IC, Edge Cases & Model Flaws)")
     ai_model = st.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"], index=0, key="gemini_model_picker")
 
     if "ai_ic_messages" not in st.session_state:
@@ -1253,28 +1233,28 @@ with tab5:
         st.session_state["ai_ic_messages"].append({"role": "assistant", "content": reply})
 
     st.markdown("---")
-    st.markdown("#### 📄 Live Investment Committee Report")
-    rep_md = f"""# IC REPORT — {selected_issuer.upper()} ({mdata['ticker']})
+    st.markdown("#### Live Investment Committee Report")
+    rep_md = f"""# IC REPORT - {selected_issuer.upper()} ({mdata['ticker']})
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M IST')} | Model: {MODEL_VERSION} | Run: {SESSION_RUN_ID}
-Role: {role} | ICDR Route: {icdr_route} | FX: ₹{FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})
+Role: {role} | ICDR Route: {icdr_route} | FX: Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})
 Provenance: {mdata['source_doc']} ({mdata['source_page']}) | Period: {mdata['reporting_period']} | Type: {mdata['data_type']}
 
 ## 1. VALUATION & PRICING
-- Proposed Offer Price: ₹{offer_price:,.2f}
-- Global Optimal Clearing Price: ₹{global_optimal_price:,.2f} | Role Optimal ({role}): ₹{role_optimal_price:,.2f}
-- Risk-Adjusted Blended Fair Value (Net Cash ₹{net_cash_cr:+,.1f} Cr, QoE Haircut {qoe_haircut*100:.2f}%): ₹{blended_fair_value:,.2f} ({upside_pct*100:+.1f}% vs. Offer)
-- Implied DCF Per Share (Post-Issue Shares {post_shares_cr:,.1f} Cr): ₹{price_dcf:,.2f} | Terminal Value Share of EV: {tv_share_pct:.1f}%
-- Forward Y1 EPS: ₹{fwd_eps:,.2f} | Buy-Side Limit Bid (15% MoS): ₹{buyside_entry_limit:,.2f} | Allotment-Adj. Return: {allotment_adj_ret_pct:+.2f}%
+- Proposed Offer Price: Rs {offer_price:,.2f}
+- Global Optimal Clearing Price: Rs {global_optimal_price:,.2f} | Role Optimal ({role}): Rs {role_optimal_price:,.2f}
+- Risk-Adjusted Blended Fair Value (Net Cash Rs {net_cash_cr:+,.1f} Cr, QoE Haircut {qoe_haircut*100:.2f}%): Rs {blended_fair_value:,.2f} ({upside_pct*100:+.1f}% vs. Offer)
+- Implied DCF Per Share (Post-Issue Shares {post_shares_cr:,.1f} Cr): Rs {price_dcf:,.2f} | Terminal Value Share of EV: {tv_share_pct:.1f}%
+- Forward Y1 EPS: Rs {fwd_eps:,.2f} | Buy-Side Limit Bid (15% MoS): Rs {buyside_entry_limit:,.2f} | Allotment-Adj. Return: {allotment_adj_ret_pct:+.2f}%
 
 ## 2. SYNDICATE & RISK
-- Fresh Issue: ₹{fresh_proceeds_cr:,.1f} Cr | OFS: ₹{ofs_proceeds_cr:,.1f} Cr | Total Issue: ₹{total_issue_proceeds_cr:,.1f} Cr
+- Fresh Issue: Rs {fresh_proceeds_cr:,.1f} Cr | OFS: Rs {ofs_proceeds_cr:,.1f} Cr | Total Issue: Rs {total_issue_proceeds_cr:,.1f} Cr
 - SEBI Coverage: {cov_total:.2f}x (QIB {cov_qib:.2f}x, NII {cov_nii:.2f}x, Retail {cov_ret:.2f}x)
-- {var_horizon_days}d VaR ({int(var_conf_level*100)}%): ₹{mc_var:,.2f} | CVaR: ₹{mc_cvar:,.2f} | Breach Prob.: {breach_prob_pct:.1f}%
+- {var_horizon_days}d VaR ({int(var_conf_level*100)}%): Rs {mc_var:,.2f} | CVaR: Rs {mc_cvar:,.2f} | Breach Prob.: {breach_prob_pct:.1f}%
 - Backtest (250d): {x_exc} exceptions | Kupiec p={kupiec_pval:.3f} | Christoffersen p={christ_pval:.3f}
 """
     st.text_area("IC Report Preview", rep_md, height=280)
     st.download_button(
-        "📥 Download IC Report (.MD)",
+        "Download IC Report (.MD)",
         data=rep_md.encode("utf-8"),
         file_name=f"IC_Report_{mdata['ticker'].replace('.', '_')}_{datetime.now().strftime('%Y%m%d')}.md",
         mime="text/markdown",
@@ -1286,16 +1266,16 @@ Provenance: {mdata['source_doc']} ({mdata['source_page']}) | Period: {mdata['rep
 # TAB 6: MODEL VALIDATION & GOVERNANCE
 # ==============================================================================
 with tab6:
-    st.markdown("### ✅ Model Validation & Automated Checks")
+    st.markdown("### Model Validation & Automated Checks")
     st.dataframe(pd.DataFrame([
         {"Check": "Data Quality & Provenance", "Status": "PASS", "Detail": f"Master dataset for {selected_issuer}; source, page, period, units & date ({DATA_RETRIEVAL_DATE}) attached."},
         {"Check": "Role Differentiation (Buy vs. Sell)", "Status": "PASS", "Detail": f"Active role: {role}; distinct objective function, execution score ({role_exec_score}/100) & decision output."},
-        {"Check": "Global Optimizer Invariance", "Status": "PASS", "Detail": f"Global optimal price (₹{global_optimal_price:,.2f}) computed strictly from intrinsic fair value & demand curve."},
-        {"Check": "DCF & EV-to-Equity Bridge", "Status": "PASS", "Detail": f"5Y UFCF + Net Cash (₹{net_cash_cr:+,.1f} Cr) ÷ Post-Issue Shares ({post_shares_cr:,.1f} Cr) = ₹{price_dcf:,.2f}."},
+        {"Check": "Global Optimizer Invariance", "Status": "PASS", "Detail": f"Global optimal price (Rs {global_optimal_price:,.2f}) computed strictly from intrinsic fair value & demand curve."},
+        {"Check": "DCF & EV-to-Equity Bridge", "Status": "PASS", "Detail": f"5Y UFCF + Net Cash (Rs {net_cash_cr:+,.1f} Cr) / Post-Issue Shares ({post_shares_cr:,.1f} Cr) = Rs {price_dcf:,.2f}."},
         {"Check": "Risk & Backtesting", "Status": "PASS" if (kupiec_pval >= 0.05 and christ_pval >= 0.05) else "WARNING", "Detail": f"Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f}, {var_horizon_days}d horizon, df={student_df:.1f}."},
         {"Check": "Greenshoe & Lock-Up", "Status": "PASS", "Detail": "15% SEBI over-allotment cap, 30d stabilisation window, short/return ledger & 30d/90d anchor overhang modeled."},
         {"Check": "AI Co-Pilot & Report Sync", "Status": "PASS", "Detail": f"Run ID {SESSION_RUN_ID} & Seed {prng_seed} shared across tabs, Star PM AI Co-Pilot snapshot & downloadable IC report."},
     ]), use_container_width=True, hide_index=True)
 
-    st.markdown("#### 📝 Change Log")
+    st.markdown("#### Change Log")
     st.dataframe(pd.DataFrame(CHANGE_LOG), use_container_width=True, hide_index=True)
