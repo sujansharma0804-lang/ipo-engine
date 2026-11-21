@@ -13,7 +13,7 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.6-INSTITUTIONAL-STAR-PM-FINAL"
+MODEL_VERSION = "v21.0.7-INSTITUTIONAL-STAR-PM-FINAL"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = $1M / 8.4)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
@@ -72,6 +72,7 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
+    {"Version": "v21.0.7", "Date": "2026-11-21", "Notes": "Added Clear Chat button, question-aware PM tape fallback, live sidebar context sync, and full end-to-end compile verification."},
     {"Version": "v21.0.6", "Date": "2026-11-21", "Notes": "Verified clean indentation and syntax across entire script; zero IndentationError or ClientError crashes."},
     {"Version": "v21.0.5", "Date": "2026-11-21", "Notes": "Added resilient ClientError/APIError handling, automatic Gemini model fallback, and clean diagnostic messages."},
     {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing."},
@@ -554,7 +555,7 @@ lr_ind = max(0.0, -2.0 * (ll_null - ll_alt))
 christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
 
 # ==============================================================================
-# 5. RESILIENT STAR HEDGE FUND PM AI IC CO-PILOT (ZERO-CRASH + FALLBACK)
+# 5. RESILIENT STAR HEDGE FUND PM AI IC CO-PILOT (QUESTION-AWARE + LIVE GEMINI)
 # ==============================================================================
 def _get_gemini_api_key():
     try:
@@ -615,6 +616,7 @@ def build_live_model_context() -> str:
             "var_conf_level": float(var_conf_level),
             "student_df": float(student_df),
             "vol_multiplier": float(vol_multiplier),
+            "mc_iterations": int(n_sims),
         },
         "valuation": {
             "blended_fair_value_inr": round(float(blended_fair_value), 2),
@@ -661,45 +663,79 @@ def build_live_model_context() -> str:
     }
     return json.dumps(state_payload, indent=2)
 
-def _local_pm_fallback_answer(user_question: str) -> str:
-    verdict = (
-        f"PASS / BID DISCIPLINED at Rs {buyside_entry_limit:,.2f} (15% MoS) vs. Rs {offer_price:,.2f} offer"
-        if offer_price > buyside_entry_limit
-        else f"CONSTRUCTIVE up to Rs {buyside_entry_limit:,.2f} (suggested size {suggested_nav_alloc_pct:.2f}% NAV)"
-    )
-    return (
-        f"**[Star PM Co-Pilot — Resilient Tape Briefing]**\n\n"
-        f"**1. Bottom-Line Call ({selected_issuer} | {role}):** {verdict}. Blended fair value is **Rs {blended_fair_value:,.2f}** ({upside_pct*100:+.1f}% vs. offer), with DCF at **Rs {price_dcf:,.2f}** (Terminal Value = **{tv_share_pct:.1f}%** of EV) and Economic FCF at **Rs {econ_fcf_cr:,.1f} Cr**.\n\n"
-        f"**2. Risk & Asymmetry:** {var_horizon_days}d VaR is **Rs {mc_var:,.2f}**, CVaR is **Rs {mc_cvar:,.2f}**, breach probability is **{breach_prob_pct:.1f}%**, and allotment-adjusted return at **{cov_total:.2f}x** coverage is **{allotment_adj_ret_pct:+.2f}%**.\n\n"
-        f"**3. Model Weak Spots:** Dataset is `{mdata['data_type']}` with simulated order book/backtest paths; Kupiec p=`{kupiec_pval:.3f}` and Christoffersen p=`{christ_pval:.3f}`.\n\n"
-        f"**Question Addressed:** *{user_question}*"
-    )
+def _local_pm_fallback_answer(user_question: str, api_status: str = "") -> str:
+    """Question-aware Star PM fallback so distinct prompts always get distinct, targeted IC answers."""
+    q = (user_question or "").lower()
+    imp_eq = offer_price * post_shares_cr
+    imp_ev = max(500.0, imp_eq - net_cash_cr)
+    imp_yr5_rev = imp_ev / max(float(mdata["ev_rev_mult"]), 0.5)
+    imp_cagr = (((imp_yr5_rev / max(ltm_rev_cr, 1.0)) ** (1.0 / 5.0)) - 1.0) * 100.0
+    imp_fcf_m = float(np.clip((imp_ev * (wacc - tg)) / max(imp_yr5_rev * (1.0 + tg), 1.0) * 100.0, 1.0, 45.0))
+    imp_ebitda_m = float(np.clip(imp_fcf_m + 9.5, 5.0, 55.0))
+    imp_reinv = float(np.clip(25.0 + max(0.0, imp_cagr - 20.0) * 1.1, 15.0, 80.0))
+
+    if any(k in q for k in ["cagr", "terminal", "reinvestment", "reverse dcf", "margin", "wacc", "dcf"]):
+        body = (
+            f"**Reverse DCF & Margin Read ({selected_issuer} @ Rs {offer_price:,.2f}):**\n"
+            f"- **What Is Priced In:** An implied equity value of **Rs {imp_eq:,.0f} Cr** (EV **Rs {imp_ev:,.0f} Cr**) requires roughly **{imp_cagr:.1f}%** 5Y revenue CAGR, **{imp_ebitda_m:.1f}%** terminal EBITDA margin (**{imp_fcf_m:.1f}%** terminal FCF margin), and **~{imp_reinv:.0f}%** reinvestment of NOPAT—compared to your active growth input of **{rev_growth_pct:.1f}%**, WACC **{wacc_pct:.2f}%**, and DCF fair value of **Rs {price_dcf:,.2f}** (Blended FV **Rs {blended_fair_value:,.2f}**).\n"
+            f"- **Where Consensus Can Break:** Terminal Value is **{tv_share_pct:.1f}%** of DCF EV, and True Economic FCF is currently **Rs {econ_fcf_cr:,.1f} Cr** (`OCF Rs {ocf_cr:,.1f} Cr - CapEx Rs {abs(tan_capex_cr):,.1f} Cr - Cap. Software Rs {abs(cap_sw_cr):,.1f} Cr`). If growth decelerates or competition compresses take-rates/margins before unit economics mature, multiple compression hits first."
+        )
+    elif any(k in q for k in ["greenshoe", "stabilis", "stabiliz", "over-allotment", "short"]):
+        max_gs_sh = total_issue_shares_cr * 0.15
+        gs_pool_cr = max_gs_sh * offer_price
+        body = (
+            f"**Greenshoe & Stabilization Mechanics ({selected_issuer}):**\n"
+            f"- **Capacity & Window:** SEBI allows up to **15%** over-allotment (**{max_gs_sh:,.2f} Cr shares**, pool **Rs {gs_pool_cr:,.1f} Cr** at Rs {offer_price:,.2f}) over a **30-day** stabilization window.\n"
+            f"- **PM Take:** Greenshoe cushions orderly price discovery on weak post-listing prints, but it is a **temporary shock absorber**, not a permanent valuation floor. Once the 30-day window closes or stabilization buying stops, price has to stand on fundamentals and secondary liquidity."
+        )
+    elif any(k in q for k in ["lock-up", "lockup", "anchor", "day 30", "day 90", "overhang", "supply"]):
+        anc_tot = total_issue_shares_cr * (w_qib * 0.60)
+        body = (
+            f"**Anchor Lock-Up & Float Overhang ({selected_issuer}):**\n"
+            f"- **Unlock Schedule:** Roughly **{anc_tot:,.2f} Cr** anchor shares unlock across **Day 30 (50%)** and **Day 90 (remaining 50%)**.\n"
+            f"- **PM Take:** Even a 25% unlock sell-through at Rs {offer_price:,.2f} adds **Rs {(anc_tot*0.25)*offer_price:,.1f} Cr** of potential supply. Watch average daily traded volume vs. unlock size around Day 30 and Day 90 before chasing post-listing spikes."
+        )
+    elif any(k in q for k in ["var", "cvar", "backtest", "kupiec", "christoffersen", "tail", "volatility", "risk", "sizing"]):
+        body = (
+            f"**Tail Risk, Sizing & Backtest Audit ({var_horizon_days}d Horizon, {int(var_conf_level*100)}% Conf., df={student_df:.1f}, {n_sims:,} sims):**\n"
+            f"- **Downside Numbers:** {var_horizon_days}d VaR is **Rs {mc_var:,.2f}**, CVaR is **Rs {mc_cvar:,.2f}**, breach probability vs. offer is **{breach_prob_pct:.1f}%**, P5 drawdown is **{max_dd_pct:.1f}%**, and suggested position size is **{suggested_nav_alloc_pct:.2f}% NAV**.\n"
+            f"- **Backtest Check:** 250-day simulated check shows **{x_exc}/{n_obs_250}** exceptions; **Kupiec p = {kupiec_pval:.3f}** and **Christoffersen p = {christ_pval:.3f}**. Because the 250d path is synthetically generated rather than a live traded tape, treat pass/fail as parameter calibration rather than empirical proof."
+        )
+    elif any(k in q for k in ["buy-side", "sell-side", "issuer", "bookrunner", "sebi", "allotment", "subscription", "ofs", "fresh"]):
+        body = (
+            f"**Syndicate Tug-of-War & Allocation ({role} | {selected_issuer}):**\n"
+            f"- **Price Tension:** Buy-Side 15% MoS entry is **Rs {buyside_entry_limit:,.2f}**, Bookrunner clearing is **Rs {sellside_clearing_price:,.2f}**, and Issuer stretch is **Rs {issuer_stretch_price:,.2f}** vs. current Offer **Rs {offer_price:,.2f}**.\n"
+            f"- **Allotment Math:** At **{cov_total:.2f}x** total coverage, implied allotment fraction is **{allotment_frac*100:.1f}%**, giving allotment-adjusted return of **{allotment_adj_ret_pct:+.2f}%** on issue size **Rs {total_issue_proceeds_cr:,.0f} Cr** (Fresh **Rs {fresh_proceeds_cr:,.0f} Cr** / OFS **Rs {ofs_proceeds_cr:,.0f} Cr**)."
+        )
+    else:
+        body = (
+            f"**PM Tape Call ({selected_issuer} | {role}):**\n"
+            f"- **Valuation & Edge:** Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**), DCF **Rs {price_dcf:,.2f}**, and Buy-Side 15% MoS limit **Rs {buyside_entry_limit:,.2f}** (Global Optimal **Rs {global_optimal_price:,.2f}**).\n"
+            f"- **Risk & Caveats:** {var_horizon_days}d CVaR **Rs {mc_cvar:,.2f}**, breach prob. **{breach_prob_pct:.1f}%**, Economic FCF **Rs {econ_fcf_cr:,.1f} Cr**, and dataset type `{mdata['data_type']}`."
+        )
+
+    status_line = f"\n\n> *API Note:* `{api_status}` (showing question-specific local PM tape engine)." if api_status else ""
+    return f"**[Star PM Co-Pilot — {selected_issuer}]**\n\n{body}\n\n*Prompt:* `{user_question}`{status_line}"
 
 def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-2.5-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
-        return (
-            "Missing `GEMINI_API_KEY` in Streamlit Secrets (`App settings -> Secrets`). "
-            "Add `GEMINI_API_KEY = \"AIzaSy...\"`, save, and reboot.\n\n"
-            + _local_pm_fallback_answer(user_question)
-        )
+        return _local_pm_fallback_answer(user_question, "GEMINI_API_KEY missing in Streamlit Secrets")
 
     live_json = build_live_model_context()
     system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine.
 
-How you think and answer:
-- Speak like a sharp, high-conviction hedge fund PM in an Investment Committee room: direct, commercial, probabilistic, and unsentimental.
-- Always separate Variant Perception & What Must Be True from Risk-Reward & Sizing (margin of safety, allotment-adjusted upside, CVaR/breach probability, lock-up overhang, and greenshoe dynamics).
-- Adapt to the active role ({role}) while calling out the tug-of-war between Buy-Side buyers, Sell-Side bookrunners, and Issuer stretch pricing.
-- Candid Model Self-Audit: Call out weak assumptions, negative economic FCF, terminal-value concentration, backtest warnings, or simulated data caveats directly.
-- Ground every number strictly in the LIVE MODEL SNAPSHOT below.
+Rules:
+- Answer the user's specific question directly first using exact numbers from LIVE MODEL SNAPSHOT.
+- Separate Variant Perception / What Must Be True from Risk-Reward / Sizing / Caveats.
+- Be sharp, candid, and non-repetitive.
 
 LIVE MODEL SNAPSHOT:
 {live_json}
 """
 
     contents = []
-    for msg in chat_history[-8:]:
+    for msg in chat_history[-6:]:
         if msg.get("role") in ("user", "assistant") and msg.get("content"):
             contents.append(
                 types.Content(
@@ -719,10 +755,11 @@ LIVE MODEL SNAPSHOT:
         if fallback_m not in candidate_models:
             candidate_models.append(fallback_m)
 
+    last_err = ""
     try:
         client = genai.Client(api_key=api_key)
-    except Exception:
-        return _local_pm_fallback_answer(user_question)
+    except Exception as e:
+        return _local_pm_fallback_answer(user_question, f"Client init error: {e}")
 
     for m_try in candidate_models:
         try:
@@ -731,24 +768,23 @@ LIVE MODEL SNAPSHOT:
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    temperature=0.3,
+                    temperature=0.45,
                 ),
             )
             txt = getattr(resp, "text", None)
             if txt and txt.strip():
                 return txt.strip()
         except genai_errors.ClientError as ce:
+            last_err = f"ClientError on {m_try}: {ce}"
             msg_low = str(ce).lower()
             if "api_key_invalid" in msg_low or "api key not valid" in msg_low or "expired" in msg_low:
-                return (
-                    "Gemini API key rejected by Google (`400/403`). Check `GEMINI_API_KEY` in Streamlit Secrets.\n\n"
-                    + _local_pm_fallback_answer(user_question)
-                )
+                return _local_pm_fallback_answer(user_question, f"Key rejected by Google on {m_try}")
             continue
-        except Exception:
+        except Exception as exc:
+            last_err = f"{type(exc).__name__} on {m_try}: {exc}"
             continue
 
-    return _local_pm_fallback_answer(user_question)
+    return _local_pm_fallback_answer(user_question, last_err or "Gemini unavailable")
 
 # ==============================================================================
 # 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
@@ -1194,7 +1230,16 @@ with tab5:
 
     st.markdown("---")
     st.markdown("### Star Hedge Fund PM AI Co-Pilot (Ask Anything - Tough IC, Edge Cases & Model Flaws)")
-    ai_model = st.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"], index=0, key="gemini_model_picker")
+    c_top1, c_top2 = st.columns([3, 1])
+    ai_model = c_top1.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"], index=0, key="gemini_model_picker")
+    if c_top2.button("Clear Chat", use_container_width=True):
+        st.session_state["ai_ic_messages"] = [
+            {
+                "role": "assistant",
+                "content": "PM Co-Pilot reset. Ask any valuation, DCF, syndicate, greenshoe, lock-up, or VaR question."
+            }
+        ]
+        st.rerun()
 
     if "ai_ic_messages" not in st.session_state:
         st.session_state["ai_ic_messages"] = [
