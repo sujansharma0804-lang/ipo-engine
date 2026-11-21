@@ -13,10 +13,11 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.9-INSTITUTIONAL-STAR-PM-G38-FINAL"
+MODEL_VERSION = "v21.1.0-SPIKEY-STAR-PM-G38-FAST"
+AI_COPILOT_NAME = "Spikey"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = Rs 10M / FX)
-FX_AS_OF_DATE = "2026-11-21"
-DATA_RETRIEVAL_DATE = "2026-11-21"
+FX_AS_OF_DATE = "2026-11-22"
+DATA_RETRIEVAL_DATE = "2026-11-22"
 SESSION_RUN_ID = f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
 st.set_page_config(
@@ -72,10 +73,9 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
+    {"Version": "v21.1.0", "Date": "2026-11-22", "Notes": "Named AI Co-Pilot Spikey across UI, prompts & fallbacks; added 10s HTTP timeout + thinking_level='MINIMAL' + cached Monte Carlo risk & fan runs so responses are fast; added Kupiec vs. Christoffersen + general multi-company answers."},
     {"Version": "v21.0.9", "Date": "2026-11-21", "Notes": "Upgraded AI Co-Pilot default & selector to gemini-3.8-flash (with gemini-4-argon fallback), added thorough multi-part 'What + Why + Live Company Numbers' answers for simple & advanced questions across ALL companies, and fixed INR Cr -> USD ($M) conversion math."},
     {"Version": "v21.0.8", "Date": "2026-11-21", "Notes": "Added concept-first + live-tape fallback for short definition questions and verified syntax."},
-    {"Version": "v21.0.7", "Date": "2026-11-21", "Notes": "Added Clear Chat button, question-aware PM tape fallback, and live sidebar context sync."},
-    {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing."},
     {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
 ]
 
@@ -291,7 +291,7 @@ MASTER_DATA = {
 # 3. SIDEBAR CONTROLS & ISSUER AUTO-SYNC
 # ==============================================================================
 st.sidebar.markdown("### IPO VALUATION, SYNDICATE & RISK ENGINE")
-st.sidebar.caption(f"{MODEL_VERSION} | FX Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})")
+st.sidebar.caption(f"{MODEL_VERSION} | Co-Pilot: {AI_COPILOT_NAME} | FX Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})")
 
 selected_issuer = st.sidebar.selectbox("Select Target Issuer", list(MASTER_DATA.keys()), index=0)
 mdata = MASTER_DATA[selected_issuer]
@@ -334,8 +334,80 @@ student_df = st.sidebar.slider("Student-t Fat Tail Degrees of Freedom", 3.0, 30.
 vol_multiplier = st.sidebar.slider("Volatility Sensitivity Multiplier", 0.5, 3.0, 1.5, 0.1)
 
 # ==============================================================================
-# 4. CORE CALCULATION ENGINE (DYNAMIC FOR COMPANY, PRICE & ROLE)
+# 4. CORE CALCULATION ENGINE (CACHED HEAVY SIMS + DYNAMIC FOR ALL COMPANIES)
 # ==============================================================================
+@st.cache_data(show_spinner=False)
+def _run_mc_risk_cached(
+    seed: int,
+    n_sims: int,
+    df_val: float,
+    drift_val: float,
+    vol_val: float,
+    dt_val: float,
+    px_val: float,
+    conf_val: float,
+):
+    rng_local = np.random.default_rng(int(seed))
+    t_sh = student_t.rvs(df=float(df_val), size=int(n_sims), random_state=rng_local)
+    t_sh = t_sh / np.sqrt(float(df_val) / max(float(df_val) - 2.0, 0.1))
+    rets = float(drift_val) + float(vol_val) * np.sqrt(float(dt_val)) * t_sh
+    prices = np.maximum(1.0, float(px_val) * (1.0 + rets))
+    losses = float(px_val) - prices
+    var_out = float(np.percentile(losses, float(conf_val) * 100.0))
+    cvar_out = float(losses[losses >= var_out].mean()) if np.any(losses >= var_out) else var_out
+    breach_out = float(np.mean(prices < float(px_val)) * 100.0)
+    dd_out = float(np.percentile(rets, 5.0) * 100.0)
+    return var_out, cvar_out, breach_out, dd_out
+
+@st.cache_data(show_spinner=False)
+def _run_backtest_250d_cached(
+    seed: int,
+    df_val: float,
+    drift_val: float,
+    horizon_val: int,
+    daily_vol_val: float,
+    var_thresh_val: float,
+    conf_val: float,
+):
+    rng_b = np.random.default_rng(int(seed) + 101)
+    ht = student_t.rvs(df=float(df_val), size=250, random_state=rng_b)
+    ht = ht / np.sqrt(float(df_val) / max(float(df_val) - 2.0, 0.1))
+    h_rets = (float(drift_val) / max(int(horizon_val), 1)) + float(daily_vol_val) * ht
+    flags = (h_rets < -float(var_thresh_val)).astype(int)
+    n_obs = len(flags)
+    x_e = int(flags.sum())
+    p_e = 1.0 - float(conf_val)
+    p_h = float(np.clip(x_e / n_obs, 1e-6, 1.0 - 1e-6))
+    lr_p = max(0.0, -2.0 * (
+        (n_obs - x_e) * np.log(max(1.0 - p_e, 1e-9)) + x_e * np.log(max(p_e, 1e-9))
+        - ((n_obs - x_e) * np.log(1.0 - p_h) + x_e * np.log(p_h))
+    ))
+    k_p = float(1.0 - chi2.cdf(lr_p, df=1))
+
+    n00 = n01 = n10 = n11 = 0
+    for idx in range(1, n_obs):
+        pe, ce = int(flags[idx - 1]), int(flags[idx])
+        if pe == 0 and ce == 0:
+            n00 += 1
+        elif pe == 0 and ce == 1:
+            n01 += 1
+        elif pe == 1 and ce == 0:
+            n10 += 1
+        else:
+            n11 += 1
+    pi_01 = n01 / max(n00 + n01, 1)
+    pi_11 = n11 / max(n10 + n11, 1)
+    pi_all = (n01 + n11) / max(n00 + n01 + n10 + n11, 1)
+
+    def _sl(v):
+        return np.log(np.clip(v, 1e-9, 1.0))
+
+    ll_0 = (n00 + n10) * _sl(1.0 - pi_all) + (n01 + n11) * _sl(pi_all)
+    ll_1 = n00 * _sl(1.0 - pi_01) + n01 * _sl(pi_01) + n10 * _sl(1.0 - pi_11) + n11 * _sl(pi_11)
+    lr_i = max(0.0, -2.0 * (ll_0 - ll_1))
+    c_p = float(1.0 - chi2.cdf(lr_i, df=1))
+    return h_rets, flags, n_obs, x_e, p_e, float(lr_p), k_p, float(lr_i), c_p
+
 pre_shares_cr = float(mdata["pre_issue_shares_cr"])
 post_shares_cr = pre_shares_cr * (1.0 + float(primary_dilution_pct) / 100.0)
 
@@ -470,23 +542,22 @@ role_opt_idx = int(np.argmax(role_curve_scores))
 role_optimal_price = float(price_grid[role_opt_idx])
 role_optimal_score = float(role_curve_scores[role_opt_idx])
 
-rng = np.random.default_rng(int(prng_seed))
 n_sims = 20000
 ann_vol = float(mdata["ann_vol"]) * float(vol_multiplier)
 dt = float(var_horizon_days) / 252.0
 val_gap = (blended_fair_value - offer_price) / max(offer_price, 0.01)
 expected_horizon_drift = float(np.clip(val_gap * 0.65, -0.45, 0.45))
 
-t_shocks = student_t.rvs(df=float(student_df), size=n_sims, random_state=rng)
-t_shocks = t_shocks / np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1))
-sim_rets = expected_horizon_drift + ann_vol * np.sqrt(dt) * t_shocks
-sim_prices = np.maximum(1.0, offer_price * (1.0 + sim_rets))
-sim_losses = offer_price - sim_prices
-
-mc_var = float(np.percentile(sim_losses, float(var_conf_level) * 100.0))
-mc_cvar = float(sim_losses[sim_losses >= mc_var].mean())
-breach_prob_pct = float(np.mean(sim_prices < offer_price) * 100.0)
-max_dd_pct = float(np.percentile(sim_rets, 5.0) * 100.0)
+mc_var, mc_cvar, breach_prob_pct, max_dd_pct = _run_mc_risk_cached(
+    int(prng_seed),
+    n_sims,
+    float(student_df),
+    expected_horizon_drift,
+    ann_vol,
+    dt,
+    float(offer_price),
+    float(var_conf_level),
+)
 
 total_issue_shares_cr = post_shares_cr - pre_shares_cr
 fresh_shares_cr = total_issue_shares_cr * float(mdata["fresh_issue_split"])
@@ -513,48 +584,21 @@ else:
     role_exec_score = int(round(0.40 * sub_a + 0.25 * sub_b + 0.20 * sub_c + 0.15 * sub_d))
 
 daily_vol = ann_vol / np.sqrt(252.0)
-hist_t = student_t.rvs(df=float(student_df), size=250, random_state=np.random.default_rng(int(prng_seed) + 101))
-hist_t = hist_t / np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1))
-hist_daily_rets = (expected_horizon_drift / max(var_horizon_days, 1)) + daily_vol * hist_t
 z_q = float(student_t.ppf(float(var_conf_level), df=float(student_df)) * np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1)))
 daily_var_thresh = daily_vol * z_q
 
-exc_flags = (hist_daily_rets < -daily_var_thresh).astype(int)
-n_obs_250 = len(exc_flags)
-x_exc = int(exc_flags.sum())
-p_exp = 1.0 - float(var_conf_level)
-p_hat = np.clip(x_exc / n_obs_250, 1e-6, 1.0 - 1e-6)
-lr_pof = max(0.0, -2.0 * (
-    (n_obs_250 - x_exc) * np.log(max(1.0 - p_exp, 1e-9)) + x_exc * np.log(max(p_exp, 1e-9))
-    - ((n_obs_250 - x_exc) * np.log(1.0 - p_hat) + x_exc * np.log(p_hat))
-))
-kupiec_pval = float(1.0 - chi2.cdf(lr_pof, df=1))
-
-n00 = n01 = n10 = n11 = 0
-for i in range(1, n_obs_250):
-    prev_e, curr_e = exc_flags[i - 1], exc_flags[i]
-    if prev_e == 0 and curr_e == 0:
-        n00 += 1
-    elif prev_e == 0 and curr_e == 1:
-        n01 += 1
-    elif prev_e == 1 and curr_e == 0:
-        n10 += 1
-    else:
-        n11 += 1
-pi_01 = n01 / max(n00 + n01, 1)
-pi_11 = n11 / max(n10 + n11, 1)
-pi_all = (n01 + n11) / max(n00 + n01 + n10 + n11, 1)
-
-def _slog(v):
-    return np.log(np.clip(v, 1e-9, 1.0))
-
-ll_null = (n00 + n10) * _slog(1.0 - pi_all) + (n01 + n11) * _slog(pi_all)
-ll_alt = n00 * _slog(1.0 - pi_01) + n01 * _slog(pi_01) + n10 * _slog(1.0 - pi_11) + n11 * _slog(pi_11)
-lr_ind = max(0.0, -2.0 * (ll_null - ll_alt))
-christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
+hist_daily_rets, exc_flags, n_obs_250, x_exc, p_exp, lr_pof, kupiec_pval, lr_ind, christ_pval = _run_backtest_250d_cached(
+    int(prng_seed),
+    float(student_df),
+    expected_horizon_drift,
+    int(var_horizon_days),
+    daily_vol,
+    daily_var_thresh,
+    float(var_conf_level),
+)
 
 # ==============================================================================
-# 5. STAR HEDGE FUND PM AI IC CO-PILOT (GEMINI 3.8 FLASH + FULL EXPLANATIONS)
+# 5. SPIKEY — STAR HEDGE FUND PM AI IC CO-PILOT (GEMINI 3.8 FLASH + FAST FALLBACK)
 # ==============================================================================
 def _get_gemini_api_key():
     try:
@@ -596,6 +640,7 @@ def build_live_model_context() -> str:
     )
 
     state_payload = {
+        "copilot_name": AI_COPILOT_NAME,
         "model_version": MODEL_VERSION,
         "run_id": SESSION_RUN_ID,
         "fx_rate_inr_per_usd": FX_RATE_INR_PER_USD,
@@ -663,8 +708,8 @@ def build_live_model_context() -> str:
     }
     return json.dumps(state_payload, indent=2)
 
-def _local_pm_fallback_answer(user_question: str, api_status: str = "") -> str:
-    """Detailed, multi-part concept + why + live-company PM fallback across all issuers."""
+def _spikey_fallback_answer(user_question: str, api_status: str = "") -> str:
+    """Detailed, multi-part concept + why + live-company PM fallback by Spikey across ALL issuers."""
     q = (user_question or "").strip().lower()
     imp_eq = offer_price * post_shares_cr
     imp_ev = max(500.0, imp_eq - net_cash_cr)
@@ -674,119 +719,121 @@ def _local_pm_fallback_answer(user_question: str, api_status: str = "") -> str:
     imp_ebitda_m = float(np.clip(imp_fcf_m + 9.5, 5.0, 55.0))
     imp_reinv = float(np.clip(25.0 + max(0.0, imp_cagr - 20.0) * 1.1, 15.0, 80.0))
 
-    if "cvar" in q or "expected shortfall" in q:
+    if "kupiec" in q or "christoffersen" in q or "christofferesen" in q or "backtest" in q:
+        body = (
+            f"**1. How Kupiec POF & Christoffersen Independence Tests Differ:**\n"
+            f"- **Kupiec POF (Proportion of Failures)** tests **frequency / count**: whether the total number of VaR exceptions over the window matches the expected tail rate (for example, ~5% at 95% confidence, or ~12.5 exceptions out of 250 days).\n"
+            f"- **Christoffersen Independence Test** tests **clustering / timing**: whether breaches occur randomly over time or bunch together on consecutive days (serial dependence/regimes).\n\n"
+            f"**2. Why That Difference Matters in Practice:**\n"
+            f"A model can **pass Kupiec** by having the right total breach count over 250 days yet **fail Christoffersen** if losses cluster during market sell-offs—meaning a bad day makes a second bad day more likely. Conversely, a 250-day synthetic series can look clean simply because it was generated from a parametric draw rather than live exchange prints.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Across **{x_exc}/{n_obs_250}** simulated exceptions (expected `{n_obs_250*p_exp:.1f}`), **Kupiec LR = {lr_pof:.2f} (`p = {kupiec_pval:.3f}`)** and **Christoffersen LR = {lr_ind:.2f} (`p = {christ_pval:.3f}`)** under `df={student_df:.1f}`, `vol_mult={vol_multiplier:.1f}x`, and `{var_horizon_days}d` horizon."
+        )
+    elif "cvar" in q or "expected shortfall" in q:
         body = (
             f"**1. What CVaR (Conditional Value at Risk) Is:**\n"
             f"CVaR—also called Expected Shortfall—measures the **average loss across the worst-case tail outcomes beyond the VaR cutoff**.\n\n"
             f"**2. Why It Behaves Like That in Markets:**\n"
-            f"VaR only tells you the threshold where losses start crossing a confidence boundary; it says nothing about how severe the drop becomes if markets gap lower or fat tails kick in. CVaR averages the tail itself, which is why PMs watch it closely for position sizing and drawdown control.\n\n"
+            f"VaR only marks the threshold where tail losses begin; it does not tell you how deep the hole gets if prices gap down or fat tails hit. Averaging the worst outcomes gives a sharper gauge of severity when sizing risk.\n\n"
             f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
-            f"Under your active **{var_horizon_days}-day**, **{int(var_conf_level*100)}% confidence**, **Student-t (df={student_df:.1f})**, **{n_sims:,}-path** run, **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** while **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}** per share, with breach probability **{breach_prob_pct:.1f}%** and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV**."
+            f"Over **{var_horizon_days} trading days** at **{int(var_conf_level*100)}% confidence** (`df={student_df:.1f}`, `{n_sims:,}` paths), **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** and **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}** per share, with breach probability **{breach_prob_pct:.1f}%** and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV**."
         )
     elif "var" in q or "value at risk" in q:
         body = (
             f"**1. What VaR (Value at Risk) Is:**\n"
             f"VaR estimates the **loss threshold at a specified confidence level over a given time horizon**.\n\n"
             f"**2. Why It Behaves Like That in Markets:**\n"
-            f"A {int(var_conf_level*100)}% VaR means {100 - int(var_conf_level*100)}% of simulated scenarios produce a worse loss than that threshold. Because IPOs and high-growth consumer names experience non-normal return spikes and drawdowns, scaling volatility with `vol_multiplier={vol_multiplier:.1f}x` and `df={student_df:.1f}` stretches the tail compared to a plain normal curve.\n\n"
+            f"A {int(var_conf_level*100)}% VaR means {100 - int(var_conf_level*100)}% of simulated outcomes breach past that loss level. Using a Student-t distribution (`df={student_df:.1f}`) and volatility multiplier (`{vol_multiplier:.1f}x`) captures heavier tails than a standard normal bell curve.\n\n"
             f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
-            f"At Offer **Rs {offer_price:,.2f}**, your **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** (1d VaR **Rs {offer_price*daily_var_thresh:,.2f}**), **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}**, and 5th-percentile drawdown is **{max_dd_pct:.1f}%**."
-        )
-    elif "kupiec" in q or "christoffersen" in q or "backtest" in q:
-        body = (
-            f"**1. What Kupiec POF & Christoffersen Tests Do:**\n"
-            f"**Kupiec POF** checks whether the total count of tail exceptions matches the expected breach rate, while **Christoffersen** tests whether breaches bunch together over consecutive days rather than occurring independently.\n\n"
-            f"**2. Why Both Matter:**\n"
-            f"A model can have the right average number of breaches over 250 days yet still fail if losses cluster during stress regimes—or look clean only because the 250-day path was synthetically generated rather than observed on a live exchange.\n\n"
-            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
-            f"Across **{x_exc}/{n_obs_250}** simulated exceptions, **Kupiec p = {kupiec_pval:.3f}** and **Christoffersen p = {christ_pval:.3f}**—treat this as parameter calibration rather than live market proof."
+            f"At Offer **Rs {offer_price:,.2f}**, **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** (1d VaR **Rs {offer_price*daily_var_thresh:,.2f}**), **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}**, and 5th-percentile drawdown is **{max_dd_pct:.1f}%**."
         )
     elif "greenshoe" in q or "stabilis" in q or "stabiliz" in q or "over-allotment" in q or "short" in q:
         max_gs_sh = total_issue_shares_cr * 0.15
         gs_pool_cr = max_gs_sh * offer_price
         body = (
             f"**1. What a Greenshoe Option Does:**\n"
-            f"A greenshoe (over-allotment) mechanism lets the stabilizing agent over-allot up to **15%** of the issue (**{max_gs_sh:,.2f} Cr shares**, or **Rs {gs_pool_cr:,.1f} Cr** at Offer **Rs {offer_price:,.2f}**) and buy back shares in the open market over **30 days** if the stock trades weak.\n\n"
+            f"A greenshoe (over-allotment) option lets the stabilizing agent over-allot up to **15%** of the issue (**{max_gs_sh:,.2f} Cr shares**, or **Rs {gs_pool_cr:,.1f} Cr** at Offer **Rs {offer_price:,.2f}**) and buy shares back in the open market over **30 days** if the stock trades weak.\n\n"
             f"**2. Why It Is Only Temporary Cushion:**\n"
-            f"Buying back shares reduces the short position and absorbs early selling pressure, but the pool and window are finite. Once the 30-day window closes or funds are used, secondary supply and fundamentals set the price.\n\n"
+            f"Market buybacks cover the short position and absorb early selling, but the cash pool and 30-day window are capped. Once stabilization ends or funds run out, fundamental valuation and secondary liquidity drive the stock.\n\n"
             f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
-            f"Against total issue size **Rs {total_issue_proceeds_cr:,.0f} Cr** and coverage **{cov_total:.2f}x**, the greenshoe can soften early post-listing wobbles but cannot rescue an over-extended valuation long term."
+            f"Against total issue proceeds of **Rs {total_issue_proceeds_cr:,.0f} Cr** and coverage of **{cov_total:.2f}x**, the greenshoe cushions early post-listing pressure without overriding long-term valuation."
         )
     elif "lock-up" in q or "lockup" in q or "anchor" in q or "day 30" in q or "day 90" in q or "overhang" in q:
         anc_tot = total_issue_shares_cr * (w_qib * 0.60)
         body = (
             f"**1. What Anchor Lock-Up Expiry Means:**\n"
-            f"Institutional anchor allocations typically unlock in tranches—modeled here at **50% around Day 30** and **50% around Day 90**—creating potential secondary share supply.\n\n"
+            f"Anchor allocations typically unlock in tranches—modeled here at **50% around Day 30** and **50% around Day 90**—releasing shares that could potentially be sold in the secondary market.\n\n"
             f"**2. Why Supply Overhang Matters:**\n"
-            f"Even if only a fraction of unlocked holders monetize gains or rebalance, fresh supply hitting the float can weigh on price if average daily trading volume is thin relative to the unlock size.\n\n"
+            f"Even if only part of the unlocked shares is sold, adding fresh supply against thin daily trading volume can create downward price pressure around unlock dates.\n\n"
             f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
-            f"Roughly **{anc_tot:,.2f} Cr** anchor shares are tracked across the Day 30 and Day 90 windows; even a 25% sell-through at **Rs {offer_price:,.2f}** equals **Rs {(anc_tot*0.25)*offer_price:,.1f} Cr** of potential supply."
+            f"About **{anc_tot:,.2f} Cr** anchor shares sit across the Day 30 and Day 90 tranches; a 25% sell-through at **Rs {offer_price:,.2f}** equals **Rs {(anc_tot*0.25)*offer_price:,.1f} Cr** of potential supply."
         )
     elif "economic fcf" in q or "fcf" in q or "capex" in q or "software" in q or "qoe" in q:
         body = (
             f"**1. What True Economic FCF Is:**\n"
-            f"True Economic FCF starts from Operating Cash Flow (**OCF**), subtracts tangible CapEx to get **Headline FCF**, and then subtracts **capitalized software/R&D** to reflect full ongoing reinvestment.\n\n"
+            f"True Economic FCF starts from Operating Cash Flow (**OCF**), subtracts tangible CapEx for **Headline FCF**, and then subtracts **capitalized software/R&D** to capture full ongoing reinvestment.\n\n"
             f"**2. Why It Differs From Headline FCF or EBITDA:**\n"
-            f"In digital and commerce businesses, platform engineering and software buildout are recurring competitive necessities—not one-off expenses. Ignoring capitalized software can make cash generation look healthier than it truly is.\n\n"
+            f"When software and platform engineering are capitalized rather than expensed, recurring product reinvestment stays hidden unless deducted—which can overstate true free cash flow.\n\n"
             f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
             f"Adjusted EBITDA is **Rs {adj_ebitda_cr:,.1f} Cr**, **OCF is Rs {ocf_cr:,.1f} Cr**, **Headline FCF is Rs {headline_fcf_cr:,.1f} Cr**, **True Economic FCF is Rs {econ_fcf_cr:,.1f} Cr**, and **QoE is {qoe_score}/100** (**{qoe_haircut*100:.2f}%** haircut)."
         )
     elif any(k in q for k in ["cagr", "terminal", "reinvestment", "reverse dcf", "margin", "wacc", "dcf"]):
         body = (
             f"**1. What Reverse DCF & Blended Valuation Tell You:**\n"
-            f"Instead of just projecting cash flows to get a price, Reverse DCF works backward from the **Offer Price (Rs {offer_price:,.2f})** to show what growth, margins, and reinvestment are already priced in.\n\n"
+            f"Reverse DCF works backward from the **Offer Price (Rs {offer_price:,.2f})** to show the 5Y revenue CAGR, margins, and reinvestment rate already priced in.\n\n"
             f"**2. Why That Matters for {selected_issuer} ({mdata['ticker']}):**\n"
-            f"When implied growth or margin assumptions stretch high—or when Terminal Value makes up a large share of DCF EV—any stumble in execution or multiple compression creates sharp downside.\n\n"
+            f"If the offer price already bakes in aggressive growth or margins—or if Terminal Value represents a high share of DCF EV—execution hiccups or multiple compression hit hard.\n\n"
             f"**3. Current Run Numbers:**\n"
-            f"Offer implies **Rs {imp_eq:,.0f} Cr** equity (**Rs {imp_ev:,.0f} Cr** EV), **~{imp_cagr:.1f}%** 5Y CAGR, **~{imp_ebitda_m:.1f}%** terminal EBITDA margin, and **~{imp_reinv:.0f}%** reinvestment vs. your active growth **{rev_growth_pct:.1f}%**, WACC **{wacc_pct:.2f}%**, DCF **Rs {price_dcf:,.2f}**, Blended FV **Rs {blended_fair_value:,.2f}** (TV share **{tv_share_pct:.1f}%**)."
+            f"Offer implies **Rs {imp_eq:,.0f} Cr** equity (**Rs {imp_ev:,.0f} Cr** EV), **~{imp_cagr:.1f}%** 5Y CAGR, **~{imp_ebitda_m:.1f}%** terminal EBITDA margin, and **~{imp_reinv:.0f}%** reinvestment vs. active growth **{rev_growth_pct:.1f}%**, WACC **{wacc_pct:.2f}%**, DCF **Rs {price_dcf:,.2f}**, Blended FV **Rs {blended_fair_value:,.2f}** (TV share **{tv_share_pct:.1f}%**)."
         )
     elif any(k in q for k in ["audit", "self-audit", "self audit", "break", "fragile", "weak", "optimistic", "assumption", "simulated"]):
         body = (
             f"**1. Where This Run Is Most Fragile ({selected_issuer} | {role}):**\n"
-            f"First, dataset provenance is **{mdata['data_type']}** (`{mdata['source_doc']}`, `{mdata['reporting_period']}`), meaning demand coverage, backtest paths, and assumptions are modeled/illustrative rather than live market prints.\n\n"
+            f"The dataset provenance is **{mdata['data_type']}** (`{mdata['source_doc']}`, `{mdata['reporting_period']}`), so demand coverage, backtests, and forward ramps are modeled/illustrative rather than live market prints.\n\n"
             f"**2. Key Valuation & Cash-Flow Pressure Points:**\n"
-            f"Terminal Value accounts for **{tv_share_pct:.1f}%** of DCF EV, True Economic FCF is **Rs {econ_fcf_cr:,.1f} Cr**, and Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**) drives the upside/downside skew.\n\n"
+            f"Terminal Value is **{tv_share_pct:.1f}%** of DCF EV, True Economic FCF is **Rs {econ_fcf_cr:,.1f} Cr**, and Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**) sets the upside/downside skew.\n\n"
             f"**3. Sizing & Risk Discipline:**\n"
-            f"Anchor sizing on **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, breach probability **{breach_prob_pct:.1f}%**, and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV** rather than assuming smooth upside."
+            f"Anchor sizing on **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, breach probability **{breach_prob_pct:.1f}%**, and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV**."
         )
     else:
         body = (
-            f"**1. Direct Take on \"{user_question}\" ({selected_issuer} | {mdata['ticker']}):**\n"
-            f"Every valuation and risk call comes down to comparing what the market price demands against fundamental cash generation, downside tail severity, and execution discipline.\n\n"
+            f"**1. Spikey's Direct Take on \"{user_question}\" ({selected_issuer} | {mdata['ticker']}):**\n"
+            f"Evaluating **{selected_issuer}** in the **{mdata['sector']}** space requires weighing what the offer price assumes against cash conversion, downside tail severity, and execution risk.\n\n"
             f"**2. Why the Numbers Matter Together:**\n"
-            f"A high headline multiple or strong growth story can still carry poor risk-reward if offer price exceeds risk-adjusted fair value, Economic FCF is negative, or tail losses are large.\n\n"
+            f"Valuation multiples, DCF cash flows, and tail risk metrics each highlight a different pressure point—comparing offer price to risk-adjusted fair value and CVaR keeps sizing disciplined.\n\n"
             f"**3. Current Live Tape for {selected_issuer} ({role}):**\n"
             f"Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**), DCF **Rs {price_dcf:,.2f}**, Buy-Side 15% MoS limit **Rs {buyside_entry_limit:,.2f}**, **{var_horizon_days}d VaR Rs {mc_var:,.2f}**, **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, and Economic FCF **Rs {econ_fcf_cr:,.1f} Cr**."
         )
 
-    status_line = f"\n\n> *API Note:* `{api_status}` (showing detailed multi-part PM explanation + live tape for {selected_issuer})." if api_status else ""
-    return f"**[Star PM Co-Pilot — {selected_issuer} | {role}]**\n\n{body}\n\n*Prompt:* `{user_question}`{status_line}"
+    status_line = f"\n\n> *{AI_COPILOT_NAME} Fast-Fallback Note:* `{api_status}` (instant multi-part PM explanation + live tape for {selected_issuer})." if api_status else ""
+    return f"**[{AI_COPILOT_NAME} — Star PM Co-Pilot | {selected_issuer} | {role}]**\n\n{body}\n\n*Prompt:* `{user_question}`{status_line}"
 
 def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-3.8-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
-        return _local_pm_fallback_answer(user_question, "GEMINI_API_KEY missing in Streamlit Secrets")
+        return _spikey_fallback_answer(user_question, "GEMINI_API_KEY missing in Streamlit Secrets")
 
     live_json = build_live_model_context()
-    system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine across multiple companies ({selected_issuer}).
+    system_instruction = f"""You are {AI_COPILOT_NAME}, a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine across all companies (currently {selected_issuer}).
 
 Rules:
+- Always introduce or represent yourself as {AI_COPILOT_NAME} when helpful, and answer thoroughly for whichever company is active in LIVE MODEL SNAPSHOT.
 - Never answer in a single one-line summary unless explicitly asked for a one-liner.
-- Give a clear, thorough explanation like a sharp institutional PM/analyst: first define the concept or answer the question directly, then explain *why* it works that way mechanically/financially, and then tie it to the active company's exact numbers in LIVE MODEL SNAPSHOT.
-- When discussing trade ideas, pricing tension, or IC challenges, clearly structure Variant Perception / What Must Be True, Risk-Reward / Sizing, and Caveats.
-- Keep it candid, insightful, and non-repetitive.
+- Explain clearly and conversationally: first define the concept or answer the question directly, then explain *why* it works that way mechanically/financially, and then connect it to the active company's exact numbers in LIVE MODEL SNAPSHOT.
+- When discussing trade ideas, pricing tension, or IC challenges, clearly break down Variant Perception / What Must Be True, Risk-Reward / Sizing, and Caveats.
+- Keep responses sharp, well-structured, and non-repetitive.
 
 LIVE MODEL SNAPSHOT:
 {live_json}
 """
 
     contents = []
-    for msg in chat_history[-6:]:
+    for msg in chat_history[-4:]:
         if msg.get("role") in ("user", "assistant") and msg.get("content"):
             contents.append(
                 types.Content(
                     role="user" if msg["role"] == "user" else "model",
-                    parts=[types.Part.from_text(text=str(msg["content"]))]
+                    parts=[types.Part.from_text(text=str(msg["content"])[:1500])]
                 )
             )
     contents.append(
@@ -797,15 +844,17 @@ LIVE MODEL SNAPSHOT:
     )
 
     candidate_models = [model_name]
-    for fallback_m in ["gemini-3.8-flash", "gemini-4-argon"]:
-        if fallback_m not in candidate_models:
-            candidate_models.append(fallback_m)
+    if "gemini-3.8-flash" not in candidate_models:
+        candidate_models.append("gemini-3.8-flash")
 
     last_err = ""
     try:
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(timeout=10000),
+        )
     except Exception as e:
-        return _local_pm_fallback_answer(user_question, f"Client init error: {e}")
+        return _spikey_fallback_answer(user_question, f"Client init error: {e}")
 
     for m_try in candidate_models:
         try:
@@ -814,7 +863,7 @@ LIVE MODEL SNAPSHOT:
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    thinking_config=types.ThinkingConfig(thinking_level="MEDIUM"),
+                    thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
                 ),
             )
             txt = getattr(resp, "text", None)
@@ -824,13 +873,13 @@ LIVE MODEL SNAPSHOT:
             last_err = f"ClientError on {m_try}: {ce}"
             msg_low = str(ce).lower()
             if "api_key_invalid" in msg_low or "api key not valid" in msg_low or "expired" in msg_low:
-                return _local_pm_fallback_answer(user_question, f"Key rejected by Google on {m_try}")
+                return _spikey_fallback_answer(user_question, f"Key rejected by Google on {m_try}")
             continue
         except Exception as exc:
             last_err = f"{type(exc).__name__} on {m_try}: {exc}"
             continue
 
-    return _local_pm_fallback_answer(user_question, last_err or "Gemini unavailable")
+    return _spikey_fallback_answer(user_question, last_err or "Gemini timed out or unavailable")
 
 # ==============================================================================
 # 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
@@ -839,7 +888,7 @@ st.markdown(f"## INSTITUTIONAL IPO VALUATION, SYNDICATE & RISK ENGINE - `{mdata[
 
 st.markdown(f"""
 <div class="prov-banner">
-    <strong>MASTER PROVENANCE:</strong> <strong>{selected_issuer}</strong> | Type: <code>{mdata['data_type']}</code> | Source: <em>{mdata['source_doc']}</em> ({mdata['source_page']}) | Period: <code>{mdata['reporting_period']}</code> | FX: <code>Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})</code> | Run: <code>{SESSION_RUN_ID}</code>.
+    <strong>MASTER PROVENANCE:</strong> <strong>{selected_issuer}</strong> | Co-Pilot: <code>{AI_COPILOT_NAME}</code> | Type: <code>{mdata['data_type']}</code> | Source: <em>{mdata['source_doc']}</em> ({mdata['source_page']}) | Period: <code>{mdata['reporting_period']}</code> | FX: <code>Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})</code> | Run: <code>{SESSION_RUN_ID}</code>.
 </div>
 """, unsafe_allow_html=True)
 
@@ -871,7 +920,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "2. Master Data, QoE & DCF / Reverse DCF",
     "3. Peer Comps, Tornado & Fan Chart",
     "4. Greenshoe, Lock-Up, 90d Path & VaR",
-    "5. IC Challenge, AI Co-Pilot & Report",
+    "5. IC Challenge, Spikey AI & Report",
     "6. Model Validation & Audit"
 ])
 
@@ -1090,8 +1139,9 @@ with tab3:
     st.plotly_chart(fig_t, use_container_width=True)
 
     st.markdown("#### Monte Carlo Valuation Fan Chart (P10-P90)")
-    mcg = np.clip(rng.normal(g_rate, 0.08, size=4000), 0.05, 0.85)
-    mcw = np.clip(rng.normal(wacc, 0.015, size=4000), 0.08, 0.22)
+    rng_fan = np.random.default_rng(int(prng_seed) + 77)
+    mcg = np.clip(rng_fan.normal(g_rate, 0.08, size=2500), 0.05, 0.85)
+    mcw = np.clip(rng_fan.normal(wacc, 0.015, size=2500), 0.08, 0.22)
     yrs = [1, 2, 3, 4, 5]
     p10, p25, p50, p75, p90 = [], [], [], [], []
     for yf in yrs:
@@ -1111,7 +1161,7 @@ with tab3:
         p75.append(float(np.percentile(vp, 75)))
         p90.append(float(np.percentile(vp, 90)))
 
-    mc_end = np.array([_fv_sens(float(gi), float(wi), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr) for gi, wi in zip(mcg[:1200], mcw[:1200])])
+    mc_end = np.array([_fv_sens(float(gi), float(wi), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr) for gi, wi in zip(mcg[:800], mcw[:800])])
     p_below = float(np.mean(mc_end < offer_price) * 100.0)
     p_target = float(np.mean(mc_end >= offer_price * 1.20) * 100.0)
 
@@ -1217,7 +1267,7 @@ with tab4:
     ]), use_container_width=True, hide_index=True)
 
 # ==============================================================================
-# TAB 5: IC CHALLENGE MODE, STAR PM AI CO-PILOT & LIVE REPORT GENERATOR
+# TAB 5: IC CHALLENGE MODE, SPIKEY AI CO-PILOT & LIVE REPORT GENERATOR
 # ==============================================================================
 with tab5:
     st.markdown("### Investment Committee Challenge Mode")
@@ -1275,14 +1325,14 @@ with tab5:
     """)
 
     st.markdown("---")
-    st.markdown(f"### Star Hedge Fund PM AI Co-Pilot — `{selected_issuer}` (Simple to Deep IC Explanations)")
+    st.markdown(f"### {AI_COPILOT_NAME} (Star Hedge Fund PM AI Co-Pilot) — `{selected_issuer}`")
     c_top1, c_top2 = st.columns([3, 1])
     ai_model = c_top1.selectbox("Gemini Model", ["gemini-3.8-flash", "gemini-4-argon"], index=0, key="gemini_model_picker")
     if c_top2.button("Clear Chat", use_container_width=True):
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": f"PM Co-Pilot reset for **{selected_issuer}**. Ask simple concept questions (like *what is CVaR*) or deep IC challenges."
+                "content": f"Hey, I'm **{AI_COPILOT_NAME}**—your Star PM IC Co-Pilot for **{selected_issuer}** (`{mdata['ticker']}`). Ask anything from quick definitions to tough IC questions."
             }
         ]
         st.rerun()
@@ -1291,20 +1341,20 @@ with tab5:
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": f"PM Co-Pilot online for **{selected_issuer}** (`{mdata['ticker']}`). Ask anything from quick definitions to tough IC stress tests—I'll explain *what*, *why*, and *how it applies here*."
+                "content": f"Hey, I'm **{AI_COPILOT_NAME}**—your Star PM IC Co-Pilot for **{selected_issuer}** (`{mdata['ticker']}`). Ask anything from quick definitions to tough IC stress tests—I'll explain *what*, *why*, and *how it applies here*."
             }
         ]
 
     starter_qs = [
+        f"How do Kupiec POF and Christoffersen independence tests differ for {selected_issuer}?",
+        f"{AI_COPILOT_NAME} audit: where is this {selected_issuer} model fragile or weak?",
         f"What is CVaR and why does it matter for {selected_issuer} right now?",
-        f"PM audit: where is this {selected_issuer} model fragile, overly optimistic, or weak?",
-        f"Why is there a gap between Buy-Side entry price, Bookrunner clearing price, and Issuer stretch price for {selected_issuer}?",
     ]
     scols = st.columns(3)
     for i, sq in enumerate(starter_qs):
         if scols[i].button(sq[:46] + "...", key=f"sq_{i}", use_container_width=True):
             st.session_state["ai_ic_messages"].append({"role": "user", "content": sq})
-            with st.spinner("Running Star PM IC analysis..."):
+            with st.spinner(f"{AI_COPILOT_NAME} is analyzing risk-reward & variant perception..."):
                 ans = ask_gemini_ic_robo(sq, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
             st.session_state["ai_ic_messages"].append({"role": "assistant", "content": ans})
 
@@ -1312,13 +1362,13 @@ with tab5:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    user_q = st.chat_input(f"Ask about {selected_issuer} (simple definitions, why it works, or tough IC questions)...")
+    user_q = st.chat_input(f"Ask {AI_COPILOT_NAME} about {selected_issuer} (simple definitions, why it works, or tough IC questions)...")
     if user_q:
         st.session_state["ai_ic_messages"].append({"role": "user", "content": user_q})
         with st.chat_message("user"):
             st.markdown(user_q)
         with st.chat_message("assistant"):
-            with st.spinner("Evaluating risk-reward & variant perception..."):
+            with st.spinner(f"{AI_COPILOT_NAME} is evaluating risk-reward & variant perception..."):
                 reply = ask_gemini_ic_robo(user_q, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
             st.markdown(reply)
         st.session_state["ai_ic_messages"].append({"role": "assistant", "content": reply})
@@ -1326,7 +1376,7 @@ with tab5:
     st.markdown("---")
     st.markdown("#### Live Investment Committee Report")
     rep_md = f"""# IC REPORT - {selected_issuer.upper()} ({mdata['ticker']})
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M IST')} | Model: {MODEL_VERSION} | Run: {SESSION_RUN_ID}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M IST')} | Co-Pilot: {AI_COPILOT_NAME} | Model: {MODEL_VERSION} | Run: {SESSION_RUN_ID}
 Role: {role} | ICDR Route: {icdr_route} | FX: Rs {FX_RATE_INR_PER_USD:.1f}/USD ({FX_AS_OF_DATE})
 Provenance: {mdata['source_doc']} ({mdata['source_page']}) | Period: {mdata['reporting_period']} | Type: {mdata['data_type']}
 
@@ -1365,7 +1415,7 @@ with tab6:
         {"Check": "DCF & EV-to-Equity Bridge", "Status": "PASS", "Detail": f"5Y UFCF + Net Cash (Rs {net_cash_cr:+,.1f} Cr) / Post-Issue Shares ({post_shares_cr:,.1f} Cr) = Rs {price_dcf:,.2f}."},
         {"Check": "Risk & Backtesting", "Status": "PASS" if (kupiec_pval >= 0.05 and christ_pval >= 0.05) else "WARNING", "Detail": f"Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f}, {var_horizon_days}d horizon, df={student_df:.1f}."},
         {"Check": "Greenshoe & Lock-Up", "Status": "PASS", "Detail": "15% SEBI over-allotment cap, 30d stabilisation window, short/return ledger & 30d/90d anchor overhang modeled."},
-        {"Check": "AI Co-Pilot & Report Sync", "Status": "PASS", "Detail": f"Run ID {SESSION_RUN_ID} & Seed {prng_seed} shared across tabs, Star PM AI Co-Pilot snapshot & downloadable IC report."},
+        {"Check": "AI Co-Pilot & Report Sync", "Status": "PASS", "Detail": f"Co-Pilot {AI_COPILOT_NAME}, Run ID {SESSION_RUN_ID} & Seed {prng_seed} shared across tabs, snapshot & downloadable IC report."},
     ]), use_container_width=True, hide_index=True)
 
     st.markdown("#### Change Log")
