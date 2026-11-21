@@ -2,6 +2,7 @@ from datetime import datetime
 import json
 import os
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 import numpy as np
 import pandas as pd
@@ -12,7 +13,7 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.4-INSTITUTIONAL-STAR-PM"
+MODEL_VERSION = "v21.0.5-INSTITUTIONAL-STAR-PM-RESILIENT"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: ₹84.00 / USD (1 INR Cr = $1M / 8.4)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
@@ -71,6 +72,7 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
+    {"Version": "v21.0.5", "Date": "2026-11-21", "Notes": "Added resilient ClientError/APIError handling, automatic Gemini model fallback, and clean diagnostic messages so the app never crashes on API errors."},
     {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing, and candid model self-audit."},
     {"Version": "v21.0.3", "Date": "2026-11-21", "Notes": "Merged live Gemini AI IC Co-Pilot with full model state serialization and self-audit caveat detection."},
     {"Version": "v21.0.2", "Date": "2026-11-21", "Notes": "Fixed sim_rets variable name in Monte Carlo VaR/Max DD block; verified zero NameError across all 6 tabs."},
@@ -477,7 +479,6 @@ ann_vol = float(mdata["ann_vol"]) * float(vol_multiplier)
 dt = float(var_horizon_days) / 252.0
 val_gap = (blended_fair_value - offer_price) / max(offer_price, 0.01)
 expected_horizon_drift = float(np.clip(val_gap * 0.65, -0.45, 0.45))
-mu_horizon = expected_horizon_drift
 
 t_shocks = student_t.rvs(df=float(student_df), size=n_sims, random_state=rng)
 t_shocks = t_shocks / np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1))
@@ -558,15 +559,20 @@ lr_ind = max(0.0, -2.0 * (ll_null - ll_alt))
 christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
 
 # ==============================================================================
-# 5. STAR HEDGE FUND PM AI IC CO-PILOT (LIVE STATE + SELF-AUDIT CAVEATS)
+# 5. RESILIENT STAR HEDGE FUND PM AI IC CO-PILOT (ZERO-CRASH + FALLBACK)
 # ==============================================================================
 def _get_gemini_api_key() -> str | None:
     try:
         if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
-            return str(st.secrets["GEMINI_API_KEY"])
+            key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
+            if key:
+                return key
     except Exception:
         pass
-    return os.environ.get("GEMINI_API_KEY")
+    env_key = os.environ.get("GEMINI_API_KEY")
+    if env_key:
+        return env_key.strip().strip('"').strip("'")
+    return None
 
 def build_live_model_context() -> str:
     """Serializes live inputs, outputs, and self-audit caveats for the Star PM AI Co-Pilot."""
@@ -661,14 +667,30 @@ def build_live_model_context() -> str:
     }
     return json.dumps(state_payload, indent=2)
 
+def _local_pm_fallback_answer(user_question: str) -> str:
+    """Instant deterministic Star PM briefing if the external Gemini API is quota/rate-limited."""
+    verdict = (
+        f"PASS / BID DISCIPLINED at ₹{buyside_entry_limit:,.2f} (15% MoS) vs. ₹{offer_price:,.2f} offer"
+        if offer_price > buyside_entry_limit
+        else f"CONSTRUCTIVE up to ₹{buyside_entry_limit:,.2f} (suggested size {suggested_nav_alloc_pct:.2f}% NAV)"
+    )
+    return (
+        f"**[Local Star PM Engine — API Fallback Mode]**\n\n"
+        f"**1. Bottom-Line Call ({selected_issuer} | {role}):** {verdict}. Blended fair value is **₹{blended_fair_value:,.2f}** ({upside_pct*100:+.1f}% vs. offer), with DCF at **₹{price_dcf:,.2f}** (Terminal Value = **{tv_share_pct:.1f}%** of EV) and Economic FCF at **₹{econ_fcf_cr:,.1f} Cr**.\n\n"
+        f"**2. Risk & Asymmetry:** {var_horizon_days}d VaR is **₹{mc_var:,.2f}**, CVaR is **₹{mc_cvar:,.2f}**, breach probability is **{breach_prob_pct:.1f}%**, and allotment-adjusted return at **{cov_total:.2f}x** coverage is **{allotment_adj_ret_pct:+.2f}%**.\n\n"
+        f"**3. Model Weak Spots:** Dataset is `{mdata['data_type']}` with simulated order book/backtest paths; Kupiec p=`{kupiec_pval:.3f}` and Christoffersen p=`{christ_pval:.3f}`. *(To use live Gemini calls, verify your `GEMINI_API_KEY` has active Gemini API quota/billing enabled in Google AI Studio.)*\n\n"
+        f"**Question Addressed:** *{user_question}*"
+    )
+
 def ask_gemini_ic_robo(user_question: str, chat_history: list[dict], model_name: str = "gemini-2.5-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
-        return "⚠️ `GEMINI_API_KEY` not found. Add `GEMINI_API_KEY = \"...\"` in Streamlit Secrets (or environment variables) to enable live AI IC Q&A."
+        return (
+            "⚠️ `GEMINI_API_KEY` is missing or empty in Streamlit Secrets (`App settings -> Secrets`). "
+            "Add `GEMINI_API_KEY = \"AIzaSy...\"`, save, and reboot the app."
+        )
 
-    client = genai.Client(api_key=api_key)
     live_json = build_live_model_context()
-
     system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine.
 
 How you think and answer:
@@ -684,28 +706,69 @@ LIVE MODEL SNAPSHOT:
 
     contents = []
     for msg in chat_history[-8:]:
-        contents.append(
-            types.Content(
-                role="user" if msg["role"] == "user" else "model",
-                parts=[types.Part.from_text(text=msg["content"])]
+        if msg.get("role") in ("user", "assistant") and msg.get("content"):
+            contents.append(
+                types.Content(
+                    role="user" if msg["role"] == "user" else "model",
+                    parts=[types.Part.from_text(text=str(msg["content"]))]
+                )
             )
-        )
     contents.append(
         types.Content(
             role="user",
-            parts=[types.Part.from_text(text=user_question)]
+            parts=[types.Part.from_text(text=str(user_question))]
         )
     )
 
-    resp = client.models.generate_content(
-        model=model_name,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0.3,
-        ),
+    candidate_models = [model_name]
+    for fallback_m in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]:
+        if fallback_m not in candidate_models:
+            candidate_models.append(fallback_m)
+
+    last_err_msg = ""
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception as init_err:
+        return (
+            f"⚠️ **Gemini Client Initialization Issue:** `{type(init_err).__name__}: {init_err}`\n\n"
+            + _local_pm_fallback_answer(user_question)
+        )
+
+    for m_try in candidate_models:
+        try:
+            resp = client.models.generate_content(
+                model=m_try,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.3,
+                ),
+            )
+            txt = getattr(resp, "text", None)
+            if txt and txt.strip():
+                return txt.strip()
+        except genai_errors.ClientError as ce:
+            code = getattr(ce, "code", None) or getattr(ce, "status_code", "4xx")
+            last_err_msg = f"ClientError ({code}) on `{m_try}`: {ce}"
+            msg_low = str(ce).lower()
+            # Invalid API key or leaked/expired key: stop retrying other models
+            if "api_key_invalid" in msg_low or "api key not valid" in msg_low or "expired" in msg_low:
+                return (
+                    f"🔑 **Invalid or Rejected Gemini API Key (`{code}`):** Google rejected the key in Streamlit Secrets.\n"
+                    f"1. Open **Google AI Studio** (`aistudio.google.com`) and generate a fresh API key.\n"
+                    f"2. In Streamlit **App settings -> Secrets**, set `GEMINI_API_KEY = \"AIzaSy...\"` and save.\n\n"
+                    + _local_pm_fallback_answer(user_question)
+                )
+            # Quota/rate-limit (429) or model not found (404): try next candidate model
+            continue
+        except Exception as exc:
+            last_err_msg = f"{type(exc).__name__} on `{m_try}`: {exc}"
+            continue
+
+    return (
+        f"⚠️ **Live Gemini Call Hit an API Limit/Error (`{last_err_msg}`):** Showing instant Star PM fallback briefing instead of crashing.\n\n"
+        + _local_pm_fallback_answer(user_question)
     )
-    return resp.text or "No response returned."
 
 # ==============================================================================
 # 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
@@ -1023,7 +1086,7 @@ with tab4:
         bb_ratio = 0.85 if gs_fund_mode != "Stabilisation Funds Exhausted" else 0.45
         avg_bb_px = offer_price * 0.93
     elif gs_px_mode == "Price Stays Near Offer Price":
-        bb_ratio = 0.40
+         bb_ratio = 0.40
         avg_bb_px = offer_price * 0.99
     else:
         bb_ratio = 0.05
@@ -1151,7 +1214,7 @@ with tab5:
 
     st.markdown("---")
     st.markdown("### 🧠 Star Hedge Fund PM AI Co-Pilot (Ask Anything — Tough IC, Edge Cases & Model Flaws)")
-    ai_model = st.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro"], index=0, key="gemini_model_picker")
+    ai_model = st.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"], index=0, key="gemini_model_picker")
 
     if "ai_ic_messages" not in st.session_state:
         st.session_state["ai_ic_messages"] = [
