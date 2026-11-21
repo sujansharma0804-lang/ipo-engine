@@ -13,8 +13,8 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.8-INSTITUTIONAL-STAR-PM-FINAL"
-FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = $1M / 8.4)
+MODEL_VERSION = "v21.0.9-INSTITUTIONAL-STAR-PM-G38-FINAL"
+FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = Rs 10M / FX)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
 SESSION_RUN_ID = f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -72,12 +72,10 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
-    {"Version": "v21.0.8", "Date": "2026-11-21", "Notes": "Added concept-first + live-tape fallback for short definition questions (CVaR, VaR, Kupiec, Greenshoe, Lock-up, Econ FCF), restricted candidate models to gemini-2.5-flash & gemini-2.5-pro, and verified zero syntax/runtime errors."},
+    {"Version": "v21.0.9", "Date": "2026-11-21", "Notes": "Upgraded AI Co-Pilot default & selector to gemini-3.8-flash (with gemini-4-argon fallback), added thorough multi-part 'What + Why + Live Company Numbers' answers for simple & advanced questions across ALL companies, and fixed INR Cr -> USD ($M) conversion math."},
+    {"Version": "v21.0.8", "Date": "2026-11-21", "Notes": "Added concept-first + live-tape fallback for short definition questions and verified syntax."},
     {"Version": "v21.0.7", "Date": "2026-11-21", "Notes": "Added Clear Chat button, question-aware PM tape fallback, and live sidebar context sync."},
-    {"Version": "v21.0.6", "Date": "2026-11-21", "Notes": "Verified clean indentation and syntax across entire script."},
-    {"Version": "v21.0.5", "Date": "2026-11-21", "Notes": "Added resilient ClientError/APIError handling, automatic Gemini model fallback, and clean diagnostic messages."},
     {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing."},
-    {"Version": "v21.0.2", "Date": "2026-11-21", "Notes": "Fixed sim_rets variable name in Monte Carlo VaR/Max DD block; verified zero NameError across all 6 tabs."},
     {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
 ]
 
@@ -556,7 +554,7 @@ lr_ind = max(0.0, -2.0 * (ll_null - ll_alt))
 christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
 
 # ==============================================================================
-# 5. RESILIENT STAR HEDGE FUND PM AI IC CO-PILOT (QUESTION-AWARE + LIVE GEMINI)
+# 5. STAR HEDGE FUND PM AI IC CO-PILOT (GEMINI 3.8 FLASH + FULL EXPLANATIONS)
 # ==============================================================================
 def _get_gemini_api_key():
     try:
@@ -604,6 +602,7 @@ def build_live_model_context() -> str:
         "fx_as_of_date": FX_AS_OF_DATE,
         "issuer": selected_issuer,
         "ticker": mdata["ticker"],
+        "sector": mdata["sector"],
         "role": role,
         "icdr_route": icdr_route,
         "inputs": {
@@ -665,7 +664,7 @@ def build_live_model_context() -> str:
     return json.dumps(state_payload, indent=2)
 
 def _local_pm_fallback_answer(user_question: str, api_status: str = "") -> str:
-    """Concept-first + live-tape Star PM fallback so even short definitional questions get direct answers."""
+    """Detailed, multi-part concept + why + live-company PM fallback across all issuers."""
     q = (user_question or "").strip().lower()
     imp_eq = offer_price * post_shares_cr
     imp_ev = max(500.0, imp_eq - net_cash_cr)
@@ -677,76 +676,105 @@ def _local_pm_fallback_answer(user_question: str, api_status: str = "") -> str:
 
     if "cvar" in q or "expected shortfall" in q:
         body = (
-            f"**What CVaR (Conditional Value at Risk / Expected Shortfall) Means:**\n"
-            f"- **Concept:** CVaR is the **average loss given that a loss exceeds the VaR threshold**—measuring tail severity past the cutoff rather than just the cutoff itself.\n"
-            f"- **In Your Current Run ({selected_issuer}):** At **{var_horizon_days}d** horizon, **{int(var_conf_level*100)}%** confidence, **df={student_df:.1f}**, and **{n_sims:,}** sims, **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** while **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}** (breach prob. **{breach_prob_pct:.1f}%**, suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV**)."
+            f"**1. What CVaR (Conditional Value at Risk) Is:**\n"
+            f"CVaR—also called Expected Shortfall—measures the **average loss across the worst-case tail outcomes beyond the VaR cutoff**.\n\n"
+            f"**2. Why It Behaves Like That in Markets:**\n"
+            f"VaR only tells you the threshold where losses start crossing a confidence boundary; it says nothing about how severe the drop becomes if markets gap lower or fat tails kick in. CVaR averages the tail itself, which is why PMs watch it closely for position sizing and drawdown control.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Under your active **{var_horizon_days}-day**, **{int(var_conf_level*100)}% confidence**, **Student-t (df={student_df:.1f})**, **{n_sims:,}-path** run, **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** while **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}** per share, with breach probability **{breach_prob_pct:.1f}%** and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV**."
         )
     elif "var" in q or "value at risk" in q:
         body = (
-            f"**What VaR (Value at Risk) Means:**\n"
-            f"- **Concept:** VaR is the **loss threshold at a chosen confidence level over a set horizon**—for example, {int(var_conf_level*100)}% VaR means {100 - int(var_conf_level*100)}% of simulated paths lose more than that amount.\n"
-            f"- **In Your Current Run ({selected_issuer}):** **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** (1d VaR **Rs {offer_price*daily_var_thresh:,.2f}**) and **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}**."
+            f"**1. What VaR (Value at Risk) Is:**\n"
+            f"VaR estimates the **loss threshold at a specified confidence level over a given time horizon**.\n\n"
+            f"**2. Why It Behaves Like That in Markets:**\n"
+            f"A {int(var_conf_level*100)}% VaR means {100 - int(var_conf_level*100)}% of simulated scenarios produce a worse loss than that threshold. Because IPOs and high-growth consumer names experience non-normal return spikes and drawdowns, scaling volatility with `vol_multiplier={vol_multiplier:.1f}x` and `df={student_df:.1f}` stretches the tail compared to a plain normal curve.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"At Offer **Rs {offer_price:,.2f}**, your **{var_horizon_days}d VaR is Rs {mc_var:,.2f}** (1d VaR **Rs {offer_price*daily_var_thresh:,.2f}**), **{var_horizon_days}d CVaR is Rs {mc_cvar:,.2f}**, and 5th-percentile drawdown is **{max_dd_pct:.1f}%**."
         )
     elif "kupiec" in q or "christoffersen" in q or "backtest" in q:
         body = (
-            f"**Backtesting — Kupiec POF vs. Christoffersen Independence:**\n"
-            f"- **Concept:** **Kupiec POF** tests whether exception frequency matches expected tail breaches; **Christoffersen** tests whether breaches cluster in time.\n"
-            f"- **In Your Current Run ({selected_issuer}):** **{x_exc}/{n_obs_250}** 250d exceptions; **Kupiec p = {kupiec_pval:.3f}** and **Christoffersen p = {christ_pval:.3f}** (simulated 250d series, not live exchange tape)."
+            f"**1. What Kupiec POF & Christoffersen Tests Do:**\n"
+            f"**Kupiec POF** checks whether the total count of tail exceptions matches the expected breach rate, while **Christoffersen** tests whether breaches bunch together over consecutive days rather than occurring independently.\n\n"
+            f"**2. Why Both Matter:**\n"
+            f"A model can have the right average number of breaches over 250 days yet still fail if losses cluster during stress regimes—or look clean only because the 250-day path was synthetically generated rather than observed on a live exchange.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Across **{x_exc}/{n_obs_250}** simulated exceptions, **Kupiec p = {kupiec_pval:.3f}** and **Christoffersen p = {christ_pval:.3f}**—treat this as parameter calibration rather than live market proof."
         )
     elif "greenshoe" in q or "stabilis" in q or "stabiliz" in q or "over-allotment" in q or "short" in q:
         max_gs_sh = total_issue_shares_cr * 0.15
         gs_pool_cr = max_gs_sh * offer_price
         body = (
-            f"**Greenshoe & Stabilization Mechanics ({selected_issuer}):**\n"
-            f"- **Concept & Capacity:** SEBI allows up to **15%** over-allotment (**{max_gs_sh:,.2f} Cr shares**, pool **Rs {gs_pool_cr:,.1f} Cr** @ Rs {offer_price:,.2f}) over **30 days** to cushion weak post-listing prints—it is temporary support, not a permanent floor."
+            f"**1. What a Greenshoe Option Does:**\n"
+            f"A greenshoe (over-allotment) mechanism lets the stabilizing agent over-allot up to **15%** of the issue (**{max_gs_sh:,.2f} Cr shares**, or **Rs {gs_pool_cr:,.1f} Cr** at Offer **Rs {offer_price:,.2f}**) and buy back shares in the open market over **30 days** if the stock trades weak.\n\n"
+            f"**2. Why It Is Only Temporary Cushion:**\n"
+            f"Buying back shares reduces the short position and absorbs early selling pressure, but the pool and window are finite. Once the 30-day window closes or funds are used, secondary supply and fundamentals set the price.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Against total issue size **Rs {total_issue_proceeds_cr:,.0f} Cr** and coverage **{cov_total:.2f}x**, the greenshoe can soften early post-listing wobbles but cannot rescue an over-extended valuation long term."
         )
     elif "lock-up" in q or "lockup" in q or "anchor" in q or "day 30" in q or "day 90" in q or "overhang" in q:
         anc_tot = total_issue_shares_cr * (w_qib * 0.60)
         body = (
-            f"**Anchor Lock-Up & Float Overhang ({selected_issuer}):**\n"
-            f"- **Concept & Supply:** Roughly **{anc_tot:,.2f} Cr** anchor shares unlock across **Day 30 (50%)** and **Day 90 (50%)**. Even a 25% sell-through adds **Rs {(anc_tot*0.25)*offer_price:,.1f} Cr** of potential supply against secondary liquidity."
+            f"**1. What Anchor Lock-Up Expiry Means:**\n"
+            f"Institutional anchor allocations typically unlock in tranches—modeled here at **50% around Day 30** and **50% around Day 90**—creating potential secondary share supply.\n\n"
+            f"**2. Why Supply Overhang Matters:**\n"
+            f"Even if only a fraction of unlocked holders monetize gains or rebalance, fresh supply hitting the float can weigh on price if average daily trading volume is thin relative to the unlock size.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Roughly **{anc_tot:,.2f} Cr** anchor shares are tracked across the Day 30 and Day 90 windows; even a 25% sell-through at **Rs {offer_price:,.2f}** equals **Rs {(anc_tot*0.25)*offer_price:,.1f} Cr** of potential supply."
         )
     elif "economic fcf" in q or "fcf" in q or "capex" in q or "software" in q or "qoe" in q:
         body = (
-            f"**Economic FCF & QoE ({selected_issuer}):**\n"
-            f"- **Concept & Live Bridge:** True Economic FCF deducts both tangible CapEx and capitalized software/R&D from OCF because recurring platform buildout is ongoing reinvestment. Here **OCF is Rs {ocf_cr:,.1f} Cr**, **Headline FCF is Rs {headline_fcf_cr:,.1f} Cr**, **Economic FCF is Rs {econ_fcf_cr:,.1f} Cr**, and **QoE is {qoe_score}/100** (**{qoe_haircut*100:.2f}%** haircut)."
+            f"**1. What True Economic FCF Is:**\n"
+            f"True Economic FCF starts from Operating Cash Flow (**OCF**), subtracts tangible CapEx to get **Headline FCF**, and then subtracts **capitalized software/R&D** to reflect full ongoing reinvestment.\n\n"
+            f"**2. Why It Differs From Headline FCF or EBITDA:**\n"
+            f"In digital and commerce businesses, platform engineering and software buildout are recurring competitive necessities—not one-off expenses. Ignoring capitalized software can make cash generation look healthier than it truly is.\n\n"
+            f"**3. How It Applies to {selected_issuer} ({mdata['ticker']}) Right Now:**\n"
+            f"Adjusted EBITDA is **Rs {adj_ebitda_cr:,.1f} Cr**, **OCF is Rs {ocf_cr:,.1f} Cr**, **Headline FCF is Rs {headline_fcf_cr:,.1f} Cr**, **True Economic FCF is Rs {econ_fcf_cr:,.1f} Cr**, and **QoE is {qoe_score}/100** (**{qoe_haircut*100:.2f}%** haircut)."
         )
     elif any(k in q for k in ["cagr", "terminal", "reinvestment", "reverse dcf", "margin", "wacc", "dcf"]):
         body = (
-            f"**Reverse DCF & Valuation ({selected_issuer} @ Rs {offer_price:,.2f}):**\n"
-            f"- **Implied vs. Base:** Offer implies **Rs {imp_eq:,.0f} Cr** equity (**Rs {imp_ev:,.0f} Cr** EV), **~{imp_cagr:.1f}%** 5Y CAGR, **~{imp_ebitda_m:.1f}%** terminal EBITDA margin, and **~{imp_reinv:.0f}%** reinvestment vs. your growth **{rev_growth_pct:.1f}%**, WACC **{wacc_pct:.2f}%**, DCF **Rs {price_dcf:,.2f}**, Blended FV **Rs {blended_fair_value:,.2f}** (TV share **{tv_share_pct:.1f}%**)."
+            f"**1. What Reverse DCF & Blended Valuation Tell You:**\n"
+            f"Instead of just projecting cash flows to get a price, Reverse DCF works backward from the **Offer Price (Rs {offer_price:,.2f})** to show what growth, margins, and reinvestment are already priced in.\n\n"
+            f"**2. Why That Matters for {selected_issuer} ({mdata['ticker']}):**\n"
+            f"When implied growth or margin assumptions stretch high—or when Terminal Value makes up a large share of DCF EV—any stumble in execution or multiple compression creates sharp downside.\n\n"
+            f"**3. Current Run Numbers:**\n"
+            f"Offer implies **Rs {imp_eq:,.0f} Cr** equity (**Rs {imp_ev:,.0f} Cr** EV), **~{imp_cagr:.1f}%** 5Y CAGR, **~{imp_ebitda_m:.1f}%** terminal EBITDA margin, and **~{imp_reinv:.0f}%** reinvestment vs. your active growth **{rev_growth_pct:.1f}%**, WACC **{wacc_pct:.2f}%**, DCF **Rs {price_dcf:,.2f}**, Blended FV **Rs {blended_fair_value:,.2f}** (TV share **{tv_share_pct:.1f}%**)."
         )
     elif any(k in q for k in ["audit", "self-audit", "self audit", "break", "fragile", "weak", "optimistic", "assumption", "simulated"]):
         body = (
-            f"**Candid PM Self-Audit ({selected_issuer} | {role} | {mdata['data_type']}):**\n"
-            f"- **Likely Breakpoints:** Simulated/illustrative inputs ({mdata['source_doc']}, {mdata['reporting_period']}), high Terminal Value share (**{tv_share_pct:.1f}%**), sensitivity to growth/WACC, and Economic FCF (**Rs {econ_fcf_cr:,.1f} Cr**). Keep sizing aligned with **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}** and **{suggested_nav_alloc_pct:.2f}% NAV**."
-        )
-    elif any(k in q for k in ["buy-side", "sell-side", "issuer", "bookrunner", "sebi", "allotment", "subscription", "ofs", "fresh"]):
-        body = (
-            f"**Syndicate & Allocation ({role} | {selected_issuer}):**\n"
-            f"- **Levels & Coverage:** Buy-Side 15% MoS **Rs {buyside_entry_limit:,.2f}**, Clearing **Rs {sellside_clearing_price:,.2f}**, Issuer stretch **Rs {issuer_stretch_price:,.2f}** vs. Offer **Rs {offer_price:,.2f}**. Coverage **{cov_total:.2f}x**, allotment **{allotment_frac*100:.1f}%**, allotment-adj. return **{allotment_adj_ret_pct:+.2f}%**."
+            f"**1. Where This Run Is Most Fragile ({selected_issuer} | {role}):**\n"
+            f"First, dataset provenance is **{mdata['data_type']}** (`{mdata['source_doc']}`, `{mdata['reporting_period']}`), meaning demand coverage, backtest paths, and assumptions are modeled/illustrative rather than live market prints.\n\n"
+            f"**2. Key Valuation & Cash-Flow Pressure Points:**\n"
+            f"Terminal Value accounts for **{tv_share_pct:.1f}%** of DCF EV, True Economic FCF is **Rs {econ_fcf_cr:,.1f} Cr**, and Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**) drives the upside/downside skew.\n\n"
+            f"**3. Sizing & Risk Discipline:**\n"
+            f"Anchor sizing on **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, breach probability **{breach_prob_pct:.1f}%**, and suggested allocation **{suggested_nav_alloc_pct:.2f}% NAV** rather than assuming smooth upside."
         )
     else:
         body = (
-            f"**Direct Answer & Live Tape ({selected_issuer} | {role}):**\n"
-            f"- **Core Take:** For *\"{user_question}\"*, anchor on Offer **Rs {offer_price:,.2f}** vs. Blended FV **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**), DCF **Rs {price_dcf:,.2f}**, Buy-Side limit **Rs {buyside_entry_limit:,.2f}**, **{var_horizon_days}d VaR Rs {mc_var:,.2f}**, **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, and Economic FCF **Rs {econ_fcf_cr:,.1f} Cr**."
+            f"**1. Direct Take on \"{user_question}\" ({selected_issuer} | {mdata['ticker']}):**\n"
+            f"Every valuation and risk call comes down to comparing what the market price demands against fundamental cash generation, downside tail severity, and execution discipline.\n\n"
+            f"**2. Why the Numbers Matter Together:**\n"
+            f"A high headline multiple or strong growth story can still carry poor risk-reward if offer price exceeds risk-adjusted fair value, Economic FCF is negative, or tail losses are large.\n\n"
+            f"**3. Current Live Tape for {selected_issuer} ({role}):**\n"
+            f"Offer **Rs {offer_price:,.2f}** vs. Blended Fair Value **Rs {blended_fair_value:,.2f}** (**{upside_pct*100:+.1f}%**), DCF **Rs {price_dcf:,.2f}**, Buy-Side 15% MoS limit **Rs {buyside_entry_limit:,.2f}**, **{var_horizon_days}d VaR Rs {mc_var:,.2f}**, **{var_horizon_days}d CVaR Rs {mc_cvar:,.2f}**, and Economic FCF **Rs {econ_fcf_cr:,.1f} Cr**."
         )
 
-    status_line = f"\n\n> *API Note:* `{api_status}` (showing direct concept + live PM tape engine)." if api_status else ""
-    return f"**[Star PM Co-Pilot — {selected_issuer}]**\n\n{body}\n\n*Prompt:* `{user_question}`{status_line}"
+    status_line = f"\n\n> *API Note:* `{api_status}` (showing detailed multi-part PM explanation + live tape for {selected_issuer})." if api_status else ""
+    return f"**[Star PM Co-Pilot — {selected_issuer} | {role}]**\n\n{body}\n\n*Prompt:* `{user_question}`{status_line}"
 
-def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-2.5-flash") -> str:
+def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-3.8-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
         return _local_pm_fallback_answer(user_question, "GEMINI_API_KEY missing in Streamlit Secrets")
 
     live_json = build_live_model_context()
-    system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine.
+    system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine across multiple companies ({selected_issuer}).
 
 Rules:
-- Answer the user's specific question directly first (whether a short concept question like "what is CVaR" or a deep IC challenge), using exact numbers from LIVE MODEL SNAPSHOT where relevant.
-- Separate Variant Perception / What Must Be True from Risk-Reward / Sizing / Caveats when discussing trade ideas.
-- Be sharp, candid, and non-repetitive.
+- Never answer in a single one-line summary unless explicitly asked for a one-liner.
+- Give a clear, thorough explanation like a sharp institutional PM/analyst: first define the concept or answer the question directly, then explain *why* it works that way mechanically/financially, and then tie it to the active company's exact numbers in LIVE MODEL SNAPSHOT.
+- When discussing trade ideas, pricing tension, or IC challenges, clearly structure Variant Perception / What Must Be True, Risk-Reward / Sizing, and Caveats.
+- Keep it candid, insightful, and non-repetitive.
 
 LIVE MODEL SNAPSHOT:
 {live_json}
@@ -769,7 +797,7 @@ LIVE MODEL SNAPSHOT:
     )
 
     candidate_models = [model_name]
-    for fallback_m in ["gemini-2.5-flash", "gemini-2.5-pro"]:
+    for fallback_m in ["gemini-3.8-flash", "gemini-4-argon"]:
         if fallback_m not in candidate_models:
             candidate_models.append(fallback_m)
 
@@ -786,7 +814,7 @@ LIVE MODEL SNAPSHOT:
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
-                    temperature=0.45,
+                    thinking_config=types.ThinkingConfig(thinking_level="MEDIUM"),
                 ),
             )
             txt = getattr(resp, "text", None)
@@ -897,7 +925,7 @@ with tab1:
         alloc_df = pd.DataFrame([
             {"Bucket": "QIB (excl. Anchor)", "Weight": f"{w_qib*0.40*100:.1f}%", "Sub.": f"{cov_qib:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib,0.01)):.1f}%"},
             {"Bucket": "Anchor Investors (QIB)", "Weight": f"{w_qib*0.60*100:.1f}%", "Sub.": f"{cov_qib*1.10:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.10,0.01)):.1f}%"},
-            {"Bucket": "Mutual Funds (5% QIB)", "Weight": f"{w_qib*0.05*100:.2f}%", "Sub.": f"{cov_qib*1.20:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.20,0.01)):.1f}%"},
+            {"Bucket": "Mutual Funds (5% QIB)", "Weight": f"{w_qib*0.05*100:.1f}%", "Sub.": f"{cov_qib*1.20:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.20,0.01)):.1f}%"},
             {"Bucket": "NII / HNI", "Weight": f"{w_nii*100:.1f}%", "Sub.": f"{cov_nii:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_nii,0.01)):.1f}%"},
             {"Bucket": "Retail Individual (RII)", "Weight": f"{w_ret*100:.1f}%", "Sub.": f"{cov_ret:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_ret,0.01)):.1f}%"},
         ])
@@ -911,7 +939,7 @@ with tab1:
         cap_df = pd.DataFrame([
             {"Metric": "Fresh Issue Proceeds", "Value": f"Rs {fresh_proceeds_cr:,.1f} Cr ({fresh_shares_cr:,.1f} Cr sh)"},
             {"Metric": "OFS Proceeds", "Value": f"Rs {ofs_proceeds_cr:,.1f} Cr ({ofs_shares_cr:,.1f} Cr sh)"},
-            {"Metric": "Total Issue Size", "Value": f"Rs {total_issue_proceeds_cr:,.1f} Cr (${total_issue_proceeds_cr/8.4:,.1f}M)"},
+            {"Metric": "Total Issue Size", "Value": f"Rs {total_issue_proceeds_cr:,.1f} Cr (${(total_issue_proceeds_cr * 10.0) / FX_RATE_INR_PER_USD:,.1f}M)"},
             {"Metric": "Pre -> Post Shares", "Value": f"{pre_shares_cr:,.1f} Cr -> {post_shares_cr:,.1f} Cr (+{primary_dilution_pct:.0f}%)"},
             {"Metric": "Pre-IPO Ownership", "Value": ", ".join([f"{k}: {v*100:.0f}%" for k, v in mdata["cap_table_pre"].items()])},
             {"Metric": "Series G MOIC / Exit", "Value": f"{sg_moic:.2f}x | Rs {sg_exit:,.1f} Cr (@ Rs {mdata['series_g_entry_px']:.2f})"},
@@ -1011,7 +1039,7 @@ with tab3:
     p_list = []
     for p in mdata["peers"]:
         orig_cr = (offer_price * post_shares_cr) if p["OrigVal_Cr"] is None else float(p["OrigVal_Cr"])
-        usd_m = orig_cr / (FX_RATE_INR_PER_USD / 10.0)
+        usd_m = (orig_cr * 10.0) / FX_RATE_INR_PER_USD
         sh_txt = f"{post_shares_cr:,.1f} Cr" if p["Shares_Cr"] is None else f"{float(p['Shares_Cr']):,.1f} Cr"
         p_list.append({
             "Issuer": p["Issuer"],
@@ -1247,14 +1275,14 @@ with tab5:
     """)
 
     st.markdown("---")
-    st.markdown("### Star Hedge Fund PM AI Co-Pilot (Ask Anything - Tough IC, Edge Cases & Model Flaws)")
+    st.markdown(f"### Star Hedge Fund PM AI Co-Pilot — `{selected_issuer}` (Simple to Deep IC Explanations)")
     c_top1, c_top2 = st.columns([3, 1])
-    ai_model = c_top1.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro"], index=0, key="gemini_model_picker")
+    ai_model = c_top1.selectbox("Gemini Model", ["gemini-3.8-flash", "gemini-4-argon"], index=0, key="gemini_model_picker")
     if c_top2.button("Clear Chat", use_container_width=True):
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": "PM Co-Pilot reset. Ask any valuation, DCF, syndicate, greenshoe, lock-up, or VaR question."
+                "content": f"PM Co-Pilot reset for **{selected_issuer}**. Ask simple concept questions (like *what is CVaR*) or deep IC challenges."
             }
         ]
         st.rerun()
@@ -1263,14 +1291,14 @@ with tab5:
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": "PM Co-Pilot online. Hit me with your hardest IC, valuation, syndicate, greenshoe, VaR/backtest, or model-weakness questions—I'll answer straight from the live tape."
+                "content": f"PM Co-Pilot online for **{selected_issuer}** (`{mdata['ticker']}`). Ask anything from quick definitions to tough IC stress tests—I'll explain *what*, *why*, and *how it applies here*."
             }
         ]
 
     starter_qs = [
-        "PM audit: where is this model fragile, overly optimistic, or weak in its current assumptions?",
-        "Why is there a gap between Buy-Side entry price, Bookrunner clearing price, and Issuer stretch price?",
-        "If growth misses by 15% and volatility spikes, what breaks first for Buy-Side vs. Sell-Side?",
+        f"What is CVaR and why does it matter for {selected_issuer} right now?",
+        f"PM audit: where is this {selected_issuer} model fragile, overly optimistic, or weak?",
+        f"Why is there a gap between Buy-Side entry price, Bookrunner clearing price, and Issuer stretch price for {selected_issuer}?",
     ]
     scols = st.columns(3)
     for i, sq in enumerate(starter_qs):
@@ -1284,7 +1312,7 @@ with tab5:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    user_q = st.chat_input("Grill the PM Co-Pilot on any tough question or model weakness...")
+    user_q = st.chat_input(f"Ask about {selected_issuer} (simple definitions, why it works, or tough IC questions)...")
     if user_q:
         st.session_state["ai_ic_messages"].append({"role": "user", "content": user_q})
         with st.chat_message("user"):
