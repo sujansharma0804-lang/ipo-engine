@@ -8,7 +8,7 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.0-INSTITUTIONAL-DYNAMIC"
+MODEL_VERSION = "v21.0.2-INSTITUTIONAL-DYNAMIC"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: ₹84.00 / USD (1 INR Cr = $1M / 8.4)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
@@ -67,7 +67,8 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
-    {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "True dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
+    {"Version": "v21.0.2", "Date": "2026-11-21", "Notes": "Fixed sim_rets variable name in Monte Carlo VaR/Max DD block; verified zero NameError across all 6 tabs."},
+    {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
 ]
 
 MASTER_DATA = {
@@ -463,7 +464,7 @@ role_opt_idx = int(np.argmax(role_curve_scores))
 role_optimal_price = float(price_grid[role_opt_idx])
 role_optimal_score = float(role_curve_scores[role_opt_idx])
 
-# Monte Carlo VaR, CVaR & Horizon Drift
+# Monte Carlo VaR, CVaR & Horizon Drift (Consistent variable names: sim_rets)
 rng = np.random.default_rng(int(prng_seed))
 n_sims = 20000
 ann_vol = float(mdata["ann_vol"]) * float(vol_multiplier)
@@ -474,8 +475,8 @@ mu_horizon = expected_horizon_drift
 
 t_shocks = student_t.rvs(df=float(student_df), size=n_sims, random_state=rng)
 t_shocks = t_shocks / np.sqrt(float(student_df) / max(float(student_df) - 2.0, 0.1))
-sim_returns = expected_horizon_drift + ann_vol * np.sqrt(dt) * t_shocks
-sim_prices = np.maximum(1.0, offer_price * (1.0 + sim_returns))
+sim_rets = expected_horizon_drift + ann_vol * np.sqrt(dt) * t_shocks
+sim_prices = np.maximum(1.0, offer_price * (1.0 + sim_rets))
 sim_losses = offer_price - sim_prices
 
 mc_var = float(np.percentile(sim_losses, float(var_conf_level) * 100.0))
@@ -608,7 +609,7 @@ with tab1:
         m2.metric("Bookrunner Clearing Px", f"₹{sellside_clearing_price:,.2f}", f"Fair Val: ₹{blended_fair_value:,.2f}")
         m3.metric("SEBI Book Coverage", f"{cov_total:.2f}x", f"QIB: {cov_qib:.2f}x | NII: {cov_nii:.2f}x")
         m4.metric("Total Issue Size", f"₹{total_issue_proceeds_cr:,.0f} Cr", f"Fresh: ₹{fresh_proceeds_cr:,.0f} | OFS: ₹{ofs_proceeds_cr:,.0f}")
-        m5.metric("Syndicate Readines", f"{role_exec_score}/100", f"Opt Cov: {opt_cov_tot:.2f}x")
+        m5.metric("Syndicate Readiness", f"{role_exec_score}/100", f"Opt Cov: {opt_cov_tot:.2f}x")
 
     if is_buyside:
         if offer_price <= blended_fair_value and breach_prob_pct <= 45.0:
