@@ -1,4 +1,8 @@
 from datetime import datetime
+import json
+import os
+from google import genai
+from google.genai import types
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -8,7 +12,7 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v21.0.2-INSTITUTIONAL-DYNAMIC"
+MODEL_VERSION = "v21.0.4-INSTITUTIONAL-STAR-PM"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: ₹84.00 / USD (1 INR Cr = $1M / 8.4)
 FX_AS_OF_DATE = "2026-11-21"
 DATA_RETRIEVAL_DATE = "2026-11-21"
@@ -67,6 +71,8 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
+    {"Version": "v21.0.4", "Date": "2026-11-21", "Notes": "Upgraded Gemini AI IC Co-Pilot to Star Hedge Fund PM style with variant perception, asymmetry & risk-reward framing, and candid model self-audit."},
+    {"Version": "v21.0.3", "Date": "2026-11-21", "Notes": "Merged live Gemini AI IC Co-Pilot with full model state serialization and self-audit caveat detection."},
     {"Version": "v21.0.2", "Date": "2026-11-21", "Notes": "Fixed sim_rets variable name in Monte Carlo VaR/Max DD block; verified zero NameError across all 6 tabs."},
     {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Dynamic Buy-Side vs. Sell-Side engines, full provenance ledger, global invariant offer-price optimizer, SEBI routes, Greenshoe & lock-up modules, Reverse DCF, Tornado, Fan Chart, Kupiec/Christoffersen backtests, IC Challenge Mode & Validation tab."},
 ]
@@ -464,7 +470,7 @@ role_opt_idx = int(np.argmax(role_curve_scores))
 role_optimal_price = float(price_grid[role_opt_idx])
 role_optimal_score = float(role_curve_scores[role_opt_idx])
 
-# Monte Carlo VaR, CVaR & Horizon Drift (Consistent variable names: sim_rets)
+# Monte Carlo VaR, CVaR & Horizon Drift
 rng = np.random.default_rng(int(prng_seed))
 n_sims = 20000
 ann_vol = float(mdata["ann_vol"]) * float(vol_multiplier)
@@ -552,7 +558,157 @@ lr_ind = max(0.0, -2.0 * (ll_null - ll_alt))
 christ_pval = float(1.0 - chi2.cdf(lr_ind, df=1))
 
 # ==============================================================================
-# 5. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
+# 5. STAR HEDGE FUND PM AI IC CO-PILOT (LIVE STATE + SELF-AUDIT CAVEATS)
+# ==============================================================================
+def _get_gemini_api_key() -> str | None:
+    try:
+        if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
+            return str(st.secrets["GEMINI_API_KEY"])
+    except Exception:
+        pass
+    return os.environ.get("GEMINI_API_KEY")
+
+def build_live_model_context() -> str:
+    """Serializes live inputs, outputs, and self-audit caveats for the Star PM AI Co-Pilot."""
+    audit_notes = []
+    if offer_price > blended_fair_value:
+        audit_notes.append(
+            f"Offer price (₹{offer_price:,.2f}) sits ABOVE risk-adjusted blended fair value (₹{blended_fair_value:,.2f}) by {abs(upside_pct)*100:.1f}%—negative intrinsic margin of safety at offer."
+        )
+    if tv_share_pct > 75.0:
+        audit_notes.append(
+            f"Terminal Value drives {tv_share_pct:.1f}% of DCF EV—small changes in WACC ({wacc_pct:.2f}%) or terminal growth ({term_growth_pct:.2f}%) swing intrinsic value heavily."
+        )
+    if kupiec_pval < 0.05 or christ_pval < 0.05:
+        audit_notes.append(
+            f"Backtest exception alert: Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f} under current Student-t (df={student_df:.1f}) & vol mult ({vol_multiplier:.1f}x)."
+        )
+    if econ_fcf_cr < 0:
+        audit_notes.append(
+            f"True Economic FCF is negative (₹{econ_fcf_cr:,.1f} Cr) after deducting tangible CapEx (₹{tan_capex_cr:,.1f} Cr) and capitalized software/R&D (₹{cap_sw_cr:,.1f} Cr)."
+        )
+    if allotment_frac < 0.25:
+        audit_notes.append(
+            f"High oversubscription ({cov_total:.2f}x) limits implied allotment to {allotment_frac*100:.1f}%, compressing allotment-adjusted return ({allotment_adj_ret_pct:+.2f}%)."
+        )
+    audit_notes.append(
+        f"Dataset provenance for {selected_issuer}: {mdata['data_type']} ({mdata['source_doc']}, {mdata['reporting_period']}); simulated order book and 250d return series."
+    )
+
+    state_payload = {
+        "model_version": MODEL_VERSION,
+        "run_id": SESSION_RUN_ID,
+        "fx_rate_inr_per_usd": FX_RATE_INR_PER_USD,
+        "fx_as_of_date": FX_AS_OF_DATE,
+        "issuer": selected_issuer,
+        "ticker": mdata["ticker"],
+        "role": role,
+        "icdr_route": icdr_route,
+        "inputs": {
+            "offer_price_inr": round(float(offer_price), 2),
+            "rev_growth_pct": float(rev_growth_pct),
+            "wacc_pct": float(wacc_pct),
+            "term_growth_pct": float(term_growth_pct),
+            "primary_dilution_pct": float(primary_dilution_pct),
+            "prng_seed": int(prng_seed),
+            "var_horizon_days": int(var_horizon_days),
+            "var_conf_level": float(var_conf_level),
+            "student_df": float(student_df),
+            "vol_multiplier": float(vol_multiplier),
+        },
+        "valuation": {
+            "blended_fair_value_inr": round(float(blended_fair_value), 2),
+            "dcf_price_inr": round(float(price_dcf), 2),
+            "ev_rev_price_inr": round(float(price_rev), 2),
+            "ev_cm_price_inr": round(float(price_cm), 2),
+            "upside_vs_offer_pct": round(float(upside_pct * 100.0), 2),
+            "global_optimal_price_inr": round(float(global_optimal_price), 2),
+            "role_optimal_price_inr": round(float(role_optimal_price), 2),
+            "buyside_entry_limit_15pct_mos_inr": round(float(buyside_entry_limit), 2),
+            "issuer_stretch_price_inr": round(float(issuer_stretch_price), 2),
+            "forward_y1_eps_inr": round(float(fwd_eps), 2),
+            "net_cash_cr": round(float(net_cash_cr), 1),
+            "tv_share_of_dcf_ev_pct": round(float(tv_share_pct), 1),
+            "post_issue_shares_cr": round(float(post_shares_cr), 1),
+        },
+        "qoe_and_fcf": {
+            "qoe_score": int(qoe_score),
+            "qoe_haircut_pct": round(float(qoe_haircut * 100.0), 2),
+            "adjusted_ebitda_cr": round(float(adj_ebitda_cr), 1),
+            "ocf_cr": round(float(ocf_cr), 1),
+            "headline_fcf_cr": round(float(headline_fcf_cr), 1),
+            "economic_fcf_cr": round(float(econ_fcf_cr), 1),
+        },
+        "syndicate_and_risk": {
+            "total_issue_proceeds_cr": round(float(total_issue_proceeds_cr), 1),
+            "fresh_proceeds_cr": round(float(fresh_proceeds_cr), 1),
+            "ofs_proceeds_cr": round(float(ofs_proceeds_cr), 1),
+            "cov_total_x": round(float(cov_total), 2),
+            "cov_qib_x": round(float(cov_qib), 2),
+            "cov_nii_x": round(float(cov_nii), 2),
+            "cov_ret_x": round(float(cov_ret), 2),
+            "allotment_frac_pct": round(float(allotment_frac * 100.0), 1),
+            "allotment_adj_return_pct": round(float(allotment_adj_ret_pct), 2),
+            "suggested_nav_alloc_pct": round(float(suggested_nav_alloc_pct), 2),
+            "mc_var_inr": round(float(mc_var), 2),
+            "mc_cvar_inr": round(float(mc_cvar), 2),
+            "breach_prob_pct": round(float(breach_prob_pct), 1),
+            "max_dd_5pct_pct": round(float(max_dd_pct), 1),
+            "kupiec_pval": round(float(kupiec_pval), 3),
+            "christoffersen_pval": round(float(christ_pval), 3),
+        },
+        "self_audit_caveats_and_limitations": audit_notes,
+    }
+    return json.dumps(state_payload, indent=2)
+
+def ask_gemini_ic_robo(user_question: str, chat_history: list[dict], model_name: str = "gemini-2.5-flash") -> str:
+    api_key = _get_gemini_api_key()
+    if not api_key:
+        return "⚠️ `GEMINI_API_KEY` not found. Add `GEMINI_API_KEY = \"...\"` in Streamlit Secrets (or environment variables) to enable live AI IC Q&A."
+
+    client = genai.Client(api_key=api_key)
+    live_json = build_live_model_context()
+
+    system_instruction = f"""You are a top-decile Star Hedge Fund Portfolio Manager (PM) & Principal IPO/Risk Strategist acting as the live Investment Committee Co-Pilot inside an IPO valuation, syndicate, and risk engine.
+
+How you think and answer:
+- Speak like a sharp, high-conviction hedge fund PM in an Investment Committee room: direct, commercial, probabilistic, and unsentimental—no fluff or generic textbook padding.
+- Always separate **Variant Perception & What Must Be True** (what the offer price/market implies vs. fundamental cash generation) from **Risk-Reward & Sizing** (margin of safety, allotment-adjusted upside, CVaR/breach probability, lock-up overhang, and greenshoe dynamics).
+- Adapt to the active role ({role}) while calling out the exact tug-of-war between Buy-Side buyers, Sell-Side bookrunners, and Issuer stretch pricing.
+- **Candid Model Self-Audit:** If there are minor issues, weak assumptions, negative economic FCF, terminal-value concentration, backtest warnings, or simulated data caveats in the live snapshot—or if the user asks a tricky/adversarial question—own them directly, explain what could go wrong, and show how to stress-test or adjust.
+- Ground every number strictly in the LIVE MODEL SNAPSHOT below.
+
+LIVE MODEL SNAPSHOT:
+{live_json}
+"""
+
+    contents = []
+    for msg in chat_history[-8:]:
+        contents.append(
+            types.Content(
+                role="user" if msg["role"] == "user" else "model",
+                parts=[types.Part.from_text(text=msg["content"])]
+            )
+        )
+    contents.append(
+        types.Content(
+            role="user",
+            parts=[types.Part.from_text(text=user_question)]
+        )
+    )
+
+    resp = client.models.generate_content(
+        model=model_name,
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.3,
+        ),
+    )
+    return resp.text or "No response returned."
+
+# ==============================================================================
+# 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
 # ==============================================================================
 st.markdown(f"## 📊 INSTITUTIONAL IPO VALUATION, SYNDICATE & RISK ENGINE — `{mdata['ticker']}` (`{role}`)")
 
@@ -590,7 +746,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "2. Master Data, QoE & DCF / Reverse DCF",
     "3. Peer Comps, Tornado & Fan Chart",
     "4. Greenshoe, Lock-Up, 90d Path & VaR",
-    "5. IC Challenge & Report Generator",
+    "5. IC Challenge, AI Co-Pilot & Report",
     "6. Model Validation & Audit"
 ])
 
@@ -936,7 +1092,7 @@ with tab4:
     ]), use_container_width=True, hide_index=True)
 
 # ==============================================================================
-# TAB 5: IC CHALLENGE MODE & LIVE REPORT GENERATOR
+# TAB 5: IC CHALLENGE MODE, STAR PM AI CO-PILOT & LIVE REPORT GENERATOR
 # ==============================================================================
 with tab5:
     st.markdown("### 🥊 Investment Committee Challenge Mode")
@@ -994,6 +1150,46 @@ with tab5:
     """)
 
     st.markdown("---")
+    st.markdown("### 🧠 Star Hedge Fund PM AI Co-Pilot (Ask Anything — Tough IC, Edge Cases & Model Flaws)")
+    ai_model = st.selectbox("Gemini Model", ["gemini-2.5-flash", "gemini-2.5-pro"], index=0, key="gemini_model_picker")
+
+    if "ai_ic_messages" not in st.session_state:
+        st.session_state["ai_ic_messages"] = [
+            {
+                "role": "assistant",
+                "content": "PM Co-Pilot online. Hit me with your hardest IC, valuation, syndicate, greenshoe, VaR/backtest, or model-weakness questions—I'll answer straight from the live tape."
+            }
+        ]
+
+    starter_qs = [
+        "PM audit: where is this model fragile, overly optimistic, or weak in its current assumptions?",
+        "Why is there a gap between Buy-Side entry price, Bookrunner clearing price, and Issuer stretch price?",
+        "If growth misses by 15% and volatility spikes, what breaks first for Buy-Side vs. Sell-Side?",
+    ]
+    scols = st.columns(3)
+    for i, sq in enumerate(starter_qs):
+        if scols[i].button(sq[:46] + "...", key=f"sq_{i}", use_container_width=True):
+            st.session_state["ai_ic_messages"].append({"role": "user", "content": sq})
+            with st.spinner("Running Star PM IC analysis..."):
+                ans = ask_gemini_ic_robo(sq, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
+            st.session_state["ai_ic_messages"].append({"role": "assistant", "content": ans})
+
+    for msg in st.session_state["ai_ic_messages"]:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+    user_q = st.chat_input("Grill the PM Co-Pilot on any tough question or model weakness...")
+    if user_q:
+        st.session_state["ai_ic_messages"].append({"role": "user", "content": user_q})
+        with st.chat_message("user"):
+            st.markdown(user_q)
+        with st.chat_message("assistant"):
+            with st.spinner("Evaluating risk-reward & variant perception..."):
+                reply = ask_gemini_ic_robo(user_q, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
+            st.markdown(reply)
+        st.session_state["ai_ic_messages"].append({"role": "assistant", "content": reply})
+
+    st.markdown("---")
     st.markdown("#### 📄 Live Investment Committee Report")
     rep_md = f"""# IC REPORT — {selected_issuer.upper()} ({mdata['ticker']})
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M IST')} | Model: {MODEL_VERSION} | Run: {SESSION_RUN_ID}
@@ -1035,7 +1231,7 @@ with tab6:
         {"Check": "DCF & EV-to-Equity Bridge", "Status": "PASS", "Detail": f"5Y UFCF + Net Cash (₹{net_cash_cr:+,.1f} Cr) ÷ Post-Issue Shares ({post_shares_cr:,.1f} Cr) = ₹{price_dcf:,.2f}."},
         {"Check": "Risk & Backtesting", "Status": "PASS" if (kupiec_pval >= 0.05 and christ_pval >= 0.05) else "WARNING", "Detail": f"Kupiec p={kupiec_pval:.3f}, Christoffersen p={christ_pval:.3f}, {var_horizon_days}d horizon, df={student_df:.1f}."},
         {"Check": "Greenshoe & Lock-Up", "Status": "PASS", "Detail": "15% SEBI over-allotment cap, 30d stabilisation window, short/return ledger & 30d/90d anchor overhang modeled."},
-        {"Check": "Report & Cross-Tab Sync", "Status": "PASS", "Detail": f"Run ID {SESSION_RUN_ID} & Seed {prng_seed} shared across dashboard tabs and downloadable IC report."},
+        {"Check": "AI Co-Pilot & Report Sync", "Status": "PASS", "Detail": f"Run ID {SESSION_RUN_ID} & Seed {prng_seed} shared across tabs, Star PM AI Co-Pilot snapshot & downloadable IC report."},
     ]), use_container_width=True, hide_index=True)
 
     st.markdown("#### 📝 Change Log")
