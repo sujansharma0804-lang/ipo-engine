@@ -13,7 +13,7 @@ import streamlit as st
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v22.3.0-SPIKEY-FULL-DEPTH-IC-COPILOT"
+MODEL_VERSION = "v22.3.2-SPIKEY-GEMINI-3-8-FLASH-IC-COPILOT"
 AI_COPILOT_NAME = "Spikey"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = Rs 10M / FX)
 FX_AS_OF_DATE = "2026-11-22"
@@ -73,6 +73,7 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
+    {"Version": "v22.3.2", "Date": "2026-11-22", "Notes": "Switched default Spikey model to gemini-3.8-flash per API 404 message with automatic fallback to gemini-3.8-flash."},
     {"Version": "v22.3.0", "Date": "2026-11-22", "Notes": "Set max_output_tokens=4096, removed any minimal-thinking parameter, raised HTTP timeout to 60s, and upgraded Spikey system instructions for full-depth live PM & quantitative responses."},
     {"Version": "v22.2.0", "Date": "2026-11-22", "Notes": "Defaulted Spikey to fast gemini-2.5-flash with compact LIVE_DATA JSON."},
     {"Version": "v22.1.0", "Date": "2026-11-22", "Notes": "Removed multi-model cascade loop and trimmed context size."},
@@ -635,7 +636,7 @@ hist_daily_rets, exc_flags, n_obs_250, x_exc, p_exp, lr_pof, kupiec_pval, lr_ind
 )
 
 # ==============================================================================
-# 5. SPIKEY v22.3.0 — FULL-DEPTH LIVE IC CO-PILOT (NO MINIMAL THINKING, 4096 TOKENS)
+# 5. SPIKEY v22.3.2 — FULL-DEPTH LIVE IC CO-PILOT (GEMINI-3.8-FLASH DEFAULT)
 # ==============================================================================
 def _get_gemini_api_key():
     try:
@@ -751,14 +752,14 @@ def build_live_model_context() -> str:
     }
     return json.dumps(compact_state)
 
-def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-2.5-flash") -> str:
+def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-3.8-flash") -> str:
     api_key = _get_gemini_api_key()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is missing in Streamlit Secrets or environment variables.")
 
     live_json = build_live_model_context()
     system_instruction = (
-        f"You are {AI_COPILOT_NAME} (v22.3.0), an elite, thorough, direct, and deeply analytical Star Hedge Fund PM, CRO & IPO Bookrunner wired to every formula and live number in this dashboard. "
+        f"You are {AI_COPILOT_NAME} (v22.3.2), an elite, thorough, direct, and deeply analytical Star Hedge Fund PM, CRO & IPO Bookrunner wired to every formula and live number in this dashboard. "
         f"Answer every single question asked about the model—whether simple, mathematical, strategic, or aggressive IC grilling—thoroughly, clearly, and completely, just like a senior portfolio manager & quantitative analyst explaining every step. "
         f"Rules: "
         f"1) Lead directly with a clear, structured answer using exact Rs Cr, Rs/share, multiples, and % from LIVE_DATA. "
@@ -784,7 +785,7 @@ def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str =
         )
     )
 
-    target_model = model_name if model_name else "gemini-2.5-flash"
+    target_model = model_name if model_name else "gemini-3.8-flash"
     client = genai.Client(
         api_key=api_key,
         http_options=types.HttpOptions(timeout=60000),
@@ -1230,11 +1231,11 @@ with tab5:
     """)
 
     st.markdown("---")
-    st.markdown(f"### {AI_COPILOT_NAME} (v22.3.0 Full-Depth Star PM AI Co-Pilot) — `{selected_issuer}`")
+    st.markdown(f"### {AI_COPILOT_NAME} (v22.3.2 Full-Depth Star PM AI Co-Pilot) — `{selected_issuer}`")
     c_top1, c_top2 = st.columns([3, 1])
     ai_model = c_top1.selectbox(
-        "Gemini Model (gemini-2.5-flash default; no minimal-thinking flag; 4096 max output tokens)",
-        ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"],
+        "Gemini Model (gemini-3.8-flash default; no minimal-thinking flag; 4096 max output tokens)",
+        ["gemini-3.8-flash", "gemini-3.0-flash", "gemini-3.0-pro"],
         index=0,
         key="gemini_model_picker"
     )
@@ -1242,7 +1243,7 @@ with tab5:
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.0`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
+                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.2`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
             }
         ]
         st.rerun()
@@ -1251,7 +1252,7 @@ with tab5:
         st.session_state["ai_ic_messages"] = [
             {
                 "role": "assistant",
-                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.0`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
+                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.2`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
             }
         ]
 
