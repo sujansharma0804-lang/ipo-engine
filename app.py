@@ -1,19 +1,25 @@
 from datetime import datetime
 import json
 import os
-from google import genai
-from google.genai import errors as genai_errors
-from google.genai import types
+import re
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from scipy.stats import chi2, t as student_t
 import streamlit as st
 
+try:
+    from google import genai
+    from google.genai import types
+except Exception:  # Spikey's local engine still works without the SDK
+    genai = None
+    types = None
+
 # ==============================================================================
 # 1. GOVERNANCE CONSTANTS & PAGE SETUP
 # ==============================================================================
-MODEL_VERSION = "v22.3.2-SPIKEY-GEMINI-3-8-FLASH-IC-COPILOT"
+MODEL_VERSION = "v22.4.0-SPIKEY-STREAMING-IC-COPILOT"
 AI_COPILOT_NAME = "Spikey"
 FX_RATE_INR_PER_USD = 84.0       # Single dated FX rate: Rs 84.00 / USD (1 INR Cr = Rs 10M / FX)
 FX_AS_OF_DATE = "2026-11-22"
@@ -23,48 +29,27 @@ SESSION_RUN_ID = f"RUN-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 st.set_page_config(
     page_title="Institutional IPO Valuation, Syndicate & Risk Engine",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 st.markdown("""
 <style>
-    .block-container {
-        padding-top: 1.25rem;
-        padding-bottom: 2.5rem;
-        max-width: 1280px;
-    }
+    .block-container { padding-top: 1.25rem; padding-bottom: 2.5rem; max-width: 1280px; }
     .prov-banner {
-        padding: 12px 16px;
-        border-radius: 6px;
-        background-color: rgba(245, 158, 11, 0.12);
-        border-left: 4px solid #f59e0b;
-        font-size: 0.85rem;
-        margin-bottom: 1rem;
+        padding: 12px 16px; border-radius: 6px; background-color: rgba(245, 158, 11, 0.12);
+        border-left: 4px solid #f59e0b; font-size: 0.85rem; margin-bottom: 1rem;
     }
     .verdict-buy {
-        padding: 12px 16px;
-        border-radius: 6px;
-        background-color: rgba(16, 185, 129, 0.12);
-        border-left: 5px solid #10b981;
-        font-weight: 600;
-        color: #065f46;
-        margin: 0.6rem 0 1rem 0;
+        padding: 12px 16px; border-radius: 6px; background-color: rgba(16, 185, 129, 0.12);
+        border-left: 5px solid #10b981; font-weight: 600; color: #065f46; margin: 0.6rem 0 1rem 0;
     }
     .verdict-caution {
-        padding: 12px 16px;
-        border-radius: 6px;
-        background-color: rgba(239, 68, 68, 0.12);
-        border-left: 5px solid #ef4444;
-        font-weight: 600;
-        color: #991b1b;
-        margin: 0.6rem 0 1rem 0;
+        padding: 12px 16px; border-radius: 6px; background-color: rgba(239, 68, 68, 0.12);
+        border-left: 5px solid #ef4444; font-weight: 600; color: #991b1b; margin: 0.6rem 0 1rem 0;
     }
     .tension-card {
-        padding: 12px 14px;
-        border-radius: 8px;
-        border: 1px solid rgba(100, 116, 139, 0.28);
-        background-color: rgba(148, 163, 184, 0.08);
-        margin-bottom: 0.75rem;
+        padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(100, 116, 139, 0.28);
+        background-color: rgba(148, 163, 184, 0.08); margin-bottom: 0.75rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -73,9 +58,10 @@ st.markdown("""
 # 2. SINGLE MASTER HISTORICAL FINANCIAL DATASET & CHANGE LOG
 # ==============================================================================
 CHANGE_LOG = [
-    {"Version": "v22.3.2", "Date": "2026-11-22", "Notes": "Switched default Spikey model to gemini-3.8-flash per API 404 message with automatic fallback to gemini-3.8-flash."},
-    {"Version": "v22.3.0", "Date": "2026-11-22", "Notes": "Set max_output_tokens=4096, removed any minimal-thinking parameter, raised HTTP timeout to 60s, and upgraded Spikey system instructions for full-depth live PM & quantitative responses."},
-    {"Version": "v22.2.0", "Date": "2026-11-22", "Notes": "Defaulted Spikey to fast gemini-2.5-flash with compact LIVE_DATA JSON."},
+    {"Version": "v22.4.0", "Date": "2026-11-22", "Notes": "Spikey rebuilt: streaming answers, automatic model discovery + retry, never-fail local expert engine, starter prompts, chat export. Refactored Reverse DCF and sensitivity helpers; order book now scales to fair value."},
+    {"Version": "v22.3.2", "Date": "2026-11-22", "Notes": "Switched default Spikey model to gemini-3.8-flash per API 404 message with automatic fallback."},
+    {"Version": "v22.3.0", "Date": "2026-11-22", "Notes": "Set max_output_tokens=4096, raised HTTP timeout to 60s, upgraded Spikey system instructions."},
+    {"Version": "v22.2.0", "Date": "2026-11-22", "Notes": "Defaulted Spikey to fast flash model with compact LIVE_DATA JSON."},
     {"Version": "v22.1.0", "Date": "2026-11-22", "Notes": "Removed multi-model cascade loop and trimmed context size."},
     {"Version": "v22.0.0", "Date": "2026-11-22", "Notes": "Wired Spikey to live formulas and sensitivity shocks."},
     {"Version": "v21.0.0", "Date": "2026-11-21", "Notes": "Full IPO valuation, syndicate, SEBI routes, Greenshoe, lock-up, Reverse DCF, Tornado, Fan Chart & backtest suite."},
@@ -96,9 +82,7 @@ MASTER_DATA = {
         "fy25_audited_rev_cr": 11109.9,
         "contrib_margin": 0.28,
         "reported_ebitda_cr": 480.0,
-        "ebitda_adjustments": [
-            ("Non-recurring restructuring / one-offs", -45.0, "Simulated / Analyst Adjustment"),
-        ],
+        "ebitda_adjustments": [("Non-recurring restructuring / one-offs", -45.0, "Simulated / Analyst Adjustment")],
         "wc_change_cr": -110.0,
         "cash_taxes_cr": -65.0,
         "tangible_capex_cr": -180.0,
@@ -132,7 +116,7 @@ MASTER_DATA = {
             {"Issuer": "Swiggy Limited", "Ticker": "SWIGGY.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 103030.2, "Shares_Cr": 224.0, "EV_Rev": 5.1, "Fwd_PE": None, "Basis": "EV", "Rationale": "Listed food & quick-commerce peer"},
             {"Issuer": "Eternal Ltd (Zomato)", "Ticker": "ETERNAL.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 218400.0, "Shares_Cr": 965.0, "EV_Rev": 8.4, "Fwd_PE": 115.0, "Basis": "EV", "Rationale": "Listed quick-commerce & food peer"},
             {"Issuer": "Flipkart Internet", "Ticker": "FLPKRT.NS", "MarketType": "Private / Pre-IPO (Simulated)", "OrigVal_Cr": 175168.0, "Shares_Cr": 500.0, "EV_Rev": 3.8, "Fwd_PE": None, "Basis": "EV", "Rationale": "Broad consumer e-commerce peer"},
-        ]
+        ],
     },
     "Swiggy Limited": {
         "ticker": "SWIGGY.NS",
@@ -148,9 +132,7 @@ MASTER_DATA = {
         "fy25_audited_rev_cr": 15227.0,
         "contrib_margin": 0.31,
         "reported_ebitda_cr": 620.0,
-        "ebitda_adjustments": [
-            ("One-time platform restructuring / legal", -30.0, "Analyst Adjustment"),
-        ],
+        "ebitda_adjustments": [("One-time platform restructuring / legal", -30.0, "Analyst Adjustment")],
         "wc_change_cr": -85.0,
         "cash_taxes_cr": -90.0,
         "tangible_capex_cr": -210.0,
@@ -183,7 +165,7 @@ MASTER_DATA = {
             {"Issuer": "Swiggy Limited", "Ticker": "SWIGGY.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 103030.2, "Shares_Cr": 224.0, "EV_Rev": 5.1, "Fwd_PE": None, "Basis": "EV", "Rationale": "Target benchmark issuer"},
             {"Issuer": "Eternal Ltd (Zomato)", "Ticker": "ETERNAL.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 218400.0, "Shares_Cr": 965.0, "EV_Rev": 8.4, "Fwd_PE": 115.0, "Basis": "EV", "Rationale": "Direct listed food & Q-com peer"},
             {"Issuer": "Zepto Limited", "Ticker": "ZEPTO.NS", "MarketType": "Private / Pre-IPO (Simulated)", "OrigVal_Cr": 50400.0, "Shares_Cr": 1000.0, "EV_Rev": 4.5, "Fwd_PE": None, "Basis": "EV", "Rationale": "Pure-play quick-commerce peer"},
-        ]
+        ],
     },
     "Eternal Ltd (Zomato)": {
         "ticker": "ETERNAL.NS",
@@ -199,9 +181,7 @@ MASTER_DATA = {
         "fy25_audited_rev_cr": 20243.0,
         "contrib_margin": 0.36,
         "reported_ebitda_cr": 2150.0,
-        "ebitda_adjustments": [
-            ("Non-recurring integration / one-offs", -60.0, "Analyst Adjustment"),
-        ],
+        "ebitda_adjustments": [("Non-recurring integration / one-offs", -60.0, "Analyst Adjustment")],
         "wc_change_cr": -120.0,
         "cash_taxes_cr": -290.0,
         "tangible_capex_cr": -340.0,
@@ -234,7 +214,7 @@ MASTER_DATA = {
             {"Issuer": "Eternal Ltd (Zomato)", "Ticker": "ETERNAL.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 218400.0, "Shares_Cr": 965.0, "EV_Rev": 8.4, "Fwd_PE": 115.0, "Basis": "EV", "Rationale": "Target benchmark issuer"},
             {"Issuer": "Swiggy Limited", "Ticker": "SWIGGY.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 103030.2, "Shares_Cr": 224.0, "EV_Rev": 5.1, "Fwd_PE": None, "Basis": "EV", "Rationale": "Direct listed food & Q-com peer"},
             {"Issuer": "Zepto Limited", "Ticker": "ZEPTO.NS", "MarketType": "Private / Pre-IPO (Simulated)", "OrigVal_Cr": 50400.0, "Shares_Cr": 1000.0, "EV_Rev": 4.5, "Fwd_PE": None, "Basis": "EV", "Rationale": "Direct quick-commerce peer"},
-        ]
+        ],
     },
     "Flipkart Internet": {
         "ticker": "FLPKRT.NS",
@@ -250,9 +230,7 @@ MASTER_DATA = {
         "fy25_audited_rev_cr": 41200.0,
         "contrib_margin": 0.24,
         "reported_ebitda_cr": 1450.0,
-        "ebitda_adjustments": [
-            ("Non-recurring logistics / one-offs", -120.0, "Simulated / Analyst Adjustment"),
-        ],
+        "ebitda_adjustments": [("Non-recurring logistics / one-offs", -120.0, "Simulated / Analyst Adjustment")],
         "wc_change_cr": -260.0,
         "cash_taxes_cr": -180.0,
         "tangible_capex_cr": -520.0,
@@ -285,8 +263,8 @@ MASTER_DATA = {
             {"Issuer": "Flipkart Internet", "Ticker": "FLPKRT.NS", "MarketType": "Private / Pre-IPO (Simulated)", "OrigVal_Cr": 175168.0, "Shares_Cr": 500.0, "EV_Rev": 3.8, "Fwd_PE": None, "Basis": "EV", "Rationale": "Target benchmark issuer"},
             {"Issuer": "Eternal Ltd (Zomato)", "Ticker": "ETERNAL.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 218400.0, "Shares_Cr": 965.0, "EV_Rev": 8.4, "Fwd_PE": 115.0, "Basis": "EV", "Rationale": "Public digital commerce peer"},
             {"Issuer": "Swiggy Limited", "Ticker": "SWIGGY.NS", "MarketType": "Publicly Traded", "OrigVal_Cr": 103030.2, "Shares_Cr": 224.0, "EV_Rev": 5.1, "Fwd_PE": None, "Basis": "EV", "Rationale": "Public commerce & delivery peer"},
-        ]
-    }
+        ],
+    },
 }
 
 # ==============================================================================
@@ -303,20 +281,16 @@ if st.session_state.get("active_issuer_key") != selected_issuer:
     st.session_state["offer_px_val"] = float(mdata["default_offer"])
     st.session_state["rev_gr_val"] = float(mdata["default_growth"])
 
-role = st.sidebar.radio(
-    "Analytical Role",
-    ["Buy-Side Investor", "Sell-Side Issuer / Bookrunner"],
-    index=0
-)
+role = st.sidebar.radio("Analytical Role", ["Buy-Side Investor", "Sell-Side Issuer / Bookrunner"], index=0)
 is_buyside = role.startswith("Buy-Side")
 
 icdr_route = st.sidebar.selectbox(
     "SEBI ICDR Eligibility Route",
     [
         "Reg 6(1) Profit / Net Tangible Asset Route (50% QIB / 15% NII / 35% Retail)",
-        "Reg 6(2) Bookbuilt Route (75% QIB / 15% NII / 10% Retail)"
+        "Reg 6(2) Bookbuilt Route (75% QIB / 15% NII / 10% Retail)",
     ],
-    index=1
+    index=1,
 )
 
 st.sidebar.markdown("---")
@@ -336,19 +310,10 @@ student_df = st.sidebar.slider("Student-t Fat Tail Degrees of Freedom", 3.0, 30.
 vol_multiplier = st.sidebar.slider("Volatility Sensitivity Multiplier", 0.5, 3.0, 1.5, 0.1)
 
 # ==============================================================================
-# 4. CORE CALCULATION ENGINE (CACHED HEAVY SIMS + DYNAMIC FOR ALL COMPANIES)
+# 4. CORE CALCULATION ENGINE
 # ==============================================================================
 @st.cache_data(show_spinner=False)
-def _run_mc_risk_cached(
-    seed: int,
-    n_sims: int,
-    df_val: float,
-    drift_val: float,
-    vol_val: float,
-    dt_val: float,
-    px_val: float,
-    conf_val: float,
-):
+def _run_mc_risk_cached(seed, n_sims, df_val, drift_val, vol_val, dt_val, px_val, conf_val):
     rng_local = np.random.default_rng(int(seed))
     t_sh = student_t.rvs(df=float(df_val), size=int(n_sims), random_state=rng_local)
     t_sh = t_sh / np.sqrt(float(df_val) / max(float(df_val) - 2.0, 0.1))
@@ -361,16 +326,9 @@ def _run_mc_risk_cached(
     dd_out = float(np.percentile(rets, 5.0) * 100.0)
     return var_out, cvar_out, breach_out, dd_out
 
+
 @st.cache_data(show_spinner=False)
-def _run_backtest_250d_cached(
-    seed: int,
-    df_val: float,
-    drift_val: float,
-    horizon_val: int,
-    daily_vol_val: float,
-    var_thresh_val: float,
-    conf_val: float,
-):
+def _run_backtest_250d_cached(seed, df_val, drift_val, horizon_val, daily_vol_val, var_thresh_val, conf_val):
     rng_b = np.random.default_rng(int(seed) + 101)
     ht = student_t.rvs(df=float(df_val), size=250, random_state=rng_b)
     ht = ht / np.sqrt(float(df_val) / max(float(df_val) - 2.0, 0.1))
@@ -410,6 +368,7 @@ def _run_backtest_250d_cached(
     c_p = float(1.0 - chi2.cdf(lr_i, df=1))
     return h_rets, flags, n_obs, x_e, p_e, float(lr_p), k_p, float(lr_i), c_p
 
+
 pre_shares_cr = float(mdata["pre_issue_shares_cr"])
 post_shares_cr = pre_shares_cr * (1.0 + float(primary_dilution_pct) / 100.0)
 
@@ -446,36 +405,34 @@ da_share = 0.035
 ebitda_ramp = [0.06, 0.10, 0.14, 0.18, 0.21]
 reinv_ramp = [0.65, 0.55, 0.45, 0.35, 0.28]
 
-dcf_rows = []
-pv_ufcf_sum = 0.0
-last_ufcf = 0.0
-for yr in range(1, 6):
-    rev_y = ltm_rev_cr * ((1.0 + g_rate) ** yr)
-    ebitda_y = rev_y * ebitda_ramp[yr - 1]
-    da_y = rev_y * da_share
-    ebit_y = ebitda_y - da_y
-    tax_y = max(0.0, ebit_y) * tax_r
-    nopat_y = ebit_y - tax_y
-    reinv_y = max(0.0, nopat_y) * reinv_ramp[yr - 1]
-    ufcf_y = nopat_y + da_y - reinv_y
-    pv_y = ufcf_y / ((1.0 + wacc) ** yr)
-    pv_ufcf_sum += pv_y
-    last_ufcf = ufcf_y
-    dcf_rows.append({
-        "Year": f"Year {yr}",
-        "Revenue": f"Rs {rev_y:,.1f} Cr",
-        "EBITDA": f"Rs {ebitda_y:,.1f} Cr",
-        "EBIT": f"Rs {ebit_y:,.1f} Cr",
-        "Tax": f"Rs {tax_y:,.1f} Cr",
-        "NOPAT": f"Rs {nopat_y:,.1f} Cr",
-        "Reinvestment": f"Rs {reinv_y:,.1f} Cr",
-        "Unlevered FCF": f"Rs {ufcf_y:,.1f} Cr",
-        "PV of UFCF": f"Rs {pv_y:,.1f} Cr",
-        "_ufcf": ufcf_y
-    })
 
-tv_cr = (last_ufcf * (1.0 + tg)) / max(wacc - tg, 0.01)
-pv_tv_cr = tv_cr / ((1.0 + wacc) ** 5)
+def _dcf_core(g_v, w_v, tg_v):
+    """5Y unlevered FCF DCF. Returns (sum PV UFCF, PV of TV, rows)."""
+    pv_s, last, rows = 0.0, 0.0, []
+    for yr in range(1, 6):
+        rev_y = ltm_rev_cr * ((1.0 + g_v) ** yr)
+        ebitda_y = rev_y * ebitda_ramp[yr - 1]
+        da_y = rev_y * da_share
+        ebit_y = ebitda_y - da_y
+        tax_y = max(0.0, ebit_y) * tax_r
+        nopat_y = ebit_y - tax_y
+        reinv_y = max(0.0, nopat_y) * reinv_ramp[yr - 1]
+        ufcf_y = nopat_y + da_y - reinv_y
+        pv_y = ufcf_y / ((1.0 + w_v) ** yr)
+        pv_s += pv_y
+        last = ufcf_y
+        rows.append((yr, rev_y, ebitda_y, ebit_y, tax_y, nopat_y, reinv_y, ufcf_y, pv_y))
+    tv = (last * (1.0 + tg_v)) / max(w_v - tg_v, 0.01)
+    return pv_s, tv / ((1.0 + w_v) ** 5), rows
+
+
+pv_ufcf_sum, pv_tv_cr, _rows = _dcf_core(g_rate, wacc, tg)
+dcf_rows = [{
+    "Year": f"Year {r[0]}", "Revenue": f"Rs {r[1]:,.1f} Cr", "EBITDA": f"Rs {r[2]:,.1f} Cr",
+    "EBIT": f"Rs {r[3]:,.1f} Cr", "Tax": f"Rs {r[4]:,.1f} Cr", "NOPAT": f"Rs {r[5]:,.1f} Cr",
+    "Reinvestment": f"Rs {r[6]:,.1f} Cr", "Unlevered FCF": f"Rs {r[7]:,.1f} Cr", "PV of UFCF": f"Rs {r[8]:,.1f} Cr",
+} for r in _rows]
+
 ev_dcf_cr = pv_ufcf_sum + pv_tv_cr
 tv_share_pct = (pv_tv_cr / max(ev_dcf_cr, 1.0)) * 100.0
 price_dcf = (ev_dcf_cr + net_cash_cr) / post_shares_cr
@@ -495,55 +452,54 @@ raw_price = (raw_ev + net_cash_cr) / post_shares_cr
 blended_fair_value = raw_price * (1.0 + qoe_haircut)
 upside_pct = (blended_fair_value - offer_price) / max(offer_price, 0.01)
 
-def _fv_sens(g_v, w_v, tg_v, ev_r_v, ev_c_v, cm_v, sh_v):
-    pv_s = 0.0
-    fl = 0.0
-    for yi in range(1, 6):
-        ri = ltm_rev_cr * ((1.0 + g_v) ** yi)
-        ebi = ri * ebitda_ramp[yi - 1]
-        ebiti = ebi - ri * da_share
-        nopi = ebiti * (1.0 - tax_r)
-        rei = max(0.0, nopi) * reinv_ramp[yi - 1]
-        ufi = nopi + ri * da_share - rei
-        pv_s += ufi / ((1.0 + w_v) ** yi)
-        fl = ufi
-    tvi = (fl * (1.0 + tg_v)) / max(w_v - tg_v, 0.01)
-    evdi = pv_s + tvi / ((1.0 + w_v) ** 5)
-    eqi = 0.40 * (ltm_rev_cr * ev_r_v) + 0.40 * evdi + 0.20 * ((ltm_rev_cr * cm_v) * ev_c_v) + net_cash_cr
-    return (eqi / max(sh_v, 1.0)) * (1.0 + qoe_haircut)
 
-def _dcf_only_sens(g_v, w_v, tg_v, sh_v):
-    pv_s = 0.0
-    fl = 0.0
-    for yi in range(1, 6):
-        ri = ltm_rev_cr * ((1.0 + g_v) ** yi)
-        ebi = ri * ebitda_ramp[yi - 1]
-        ebiti = ebi - ri * da_share
-        nopi = ebiti * (1.0 - tax_r)
-        rei = max(0.0, nopi) * reinv_ramp[yi - 1]
-        ufi = nopi + ri * da_share - rei
-        pv_s += ufi / ((1.0 + w_v) ** yi)
-        fl = ufi
-    tvi = (fl * (1.0 + tg_v)) / max(w_v - tg_v, 0.01)
-    pv_tvi = tvi / ((1.0 + w_v) ** 5)
-    evdi = pv_s + pv_tvi
-    pxdi = (evdi + net_cash_cr) / max(sh_v, 1.0)
-    tv_sh_i = (pv_tvi / max(evdi, 1.0)) * 100.0
-    return evdi, pxdi, tv_sh_i
+def fv_at(g=None, w=None, t=None, evr=None, evc=None, cm=None, sh=None):
+    """Blended fair value under shocked inputs (any omitted input stays at base)."""
+    g = g_rate if g is None else g
+    w = wacc if w is None else w
+    t = tg if t is None else t
+    evr = float(mdata["ev_rev_mult"]) if evr is None else evr
+    evc = float(mdata["ev_cm_mult"]) if evc is None else evc
+    cm = float(mdata["contrib_margin"]) if cm is None else cm
+    sh = post_shares_cr if sh is None else sh
+    pv_s, pv_t, _ = _dcf_core(g, w, t)
+    eq = 0.40 * (ltm_rev_cr * evr) + 0.40 * (pv_s + pv_t) + 0.20 * ((ltm_rev_cr * cm) * evc) + net_cash_cr
+    return (eq / max(sh, 1.0)) * (1.0 + qoe_haircut)
+
+
+def dcf_only_at(t):
+    """DCF-only EV, price and TV share under a shocked terminal growth."""
+    pv_s, pv_t, _ = _dcf_core(g_rate, wacc, t)
+    ev = pv_s + pv_t
+    return ev, (ev + net_cash_cr) / max(post_shares_cr, 1.0), (pv_t / max(ev, 1.0)) * 100.0
+
+
+def reverse_dcf():
+    """What must be true to justify the proposed offer price."""
+    eq = offer_price * post_shares_cr
+    ev = max(500.0, eq - net_cash_cr)
+    yr5_rev = ev / max(float(mdata["ev_rev_mult"]), 0.5)
+    cagr = (((yr5_rev / max(ltm_rev_cr, 1.0)) ** (1.0 / 5.0)) - 1.0) * 100.0
+    fcf_m = float(np.clip((ev * (wacc - tg)) / max(yr5_rev * (1.0 + tg), 1.0) * 100.0, 1.0, 45.0))
+    return {
+        "eq": eq, "ev": ev, "cagr": cagr, "fcf_m": fcf_m,
+        "ebitda_m": float(np.clip(fcf_m + 9.5, 5.0, 55.0)),
+        "reinv": float(np.clip(25.0 + max(0.0, cagr - 20.0) * 1.1, 15.0, 80.0)),
+    }
+
 
 if icdr_route.startswith("Reg 6(1)"):
     w_qib, w_nii, w_ret = 0.50, 0.15, 0.35
 else:
     w_qib, w_nii, w_ret = 0.75, 0.15, 0.10
 
-def get_subscription(p_val: float, fv_val: float, shock: float = 1.0):
+
+def get_subscription(p_val, fv_val, shock=1.0):
     ratio = fv_val / max(p_val, 0.5)
     base = max(0.15, (ratio ** 2.3) * 3.80 * shock)
-    q_c = base * 1.15
-    n_c = base * 0.90
-    r_c = base * 0.65
-    tot_c = w_qib * q_c + w_nii * n_c + w_ret * r_c
-    return tot_c, q_c, n_c, r_c
+    q_c, n_c, r_c = base * 1.15, base * 0.90, base * 0.65
+    return w_qib * q_c + w_nii * n_c + w_ret * r_c, q_c, n_c, r_c
+
 
 cov_total, cov_qib, cov_nii, cov_ret = get_subscription(offer_price, blended_fair_value)
 
@@ -587,14 +543,8 @@ val_gap = (blended_fair_value - offer_price) / max(offer_price, 0.01)
 expected_horizon_drift = float(np.clip(val_gap * 0.65, -0.45, 0.45))
 
 mc_var, mc_cvar, breach_prob_pct, max_dd_pct = _run_mc_risk_cached(
-    int(prng_seed),
-    n_sims,
-    float(student_df),
-    expected_horizon_drift,
-    ann_vol,
-    dt,
-    float(offer_price),
-    float(var_conf_level),
+    int(prng_seed), n_sims, float(student_df), expected_horizon_drift, ann_vol, dt,
+    float(offer_price), float(var_conf_level),
 )
 
 total_issue_shares_cr = post_shares_cr - pre_shares_cr
@@ -626,53 +576,71 @@ z_q = float(student_t.ppf(float(var_conf_level), df=float(student_df)) * np.sqrt
 daily_var_thresh = daily_vol * z_q
 
 hist_daily_rets, exc_flags, n_obs_250, x_exc, p_exp, lr_pof, kupiec_pval, lr_ind, christ_pval = _run_backtest_250d_cached(
-    int(prng_seed),
-    float(student_df),
-    expected_horizon_drift,
-    int(var_horizon_days),
-    daily_vol,
-    daily_var_thresh,
-    float(var_conf_level),
+    int(prng_seed), float(student_df), expected_horizon_drift, int(var_horizon_days),
+    daily_vol, daily_var_thresh, float(var_conf_level),
 )
 
 # ==============================================================================
-# 5. SPIKEY v22.3.2 — FULL-DEPTH LIVE IC CO-PILOT (GEMINI-3.8-FLASH DEFAULT)
+# 5. SPIKEY v22.4 - STREAMING IC CO-PILOT (AUTO MODEL DISCOVERY + NEVER-FAIL ENGINE)
 # ==============================================================================
+SPIKEY_PREFERRED_MODELS = ["gemini-3.8-flash", "gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.5-pro"]
+SPIKEY_MAX_TOKENS = 2048
+SPIKEY_TIMEOUT_MS = 45000
+SPIKEY_HISTORY_TURNS = 8
+
+
 def _get_gemini_api_key():
     try:
         if "GEMINI_API_KEY" in st.secrets and st.secrets["GEMINI_API_KEY"]:
-            key = str(st.secrets["GEMINI_API_KEY"]).strip().strip('"').strip("'")
-            if key:
-                return key
+            return str(st.secrets["GEMINI_API_KEY"]).strip().strip("\"'")
     except Exception:
         pass
     env_key = os.environ.get("GEMINI_API_KEY")
-    if env_key:
-        return env_key.strip().strip('"').strip("'")
-    return None
+    return env_key.strip().strip("\"'") if env_key else None
+
+
+def _version_key(name):
+    m = re.search(r"(\d+)(?:\.(\d+))?", name)
+    return (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _discover_models(api_key):
+    """Models this key can actually call with generateContent: flash first, newest first."""
+    if genai is None or not api_key:
+        return []
+    try:
+        client = genai.Client(api_key=api_key)
+        names = []
+        for m in client.models.list():
+            if "generateContent" in (getattr(m, "supported_actions", None) or []):
+                names.append(str(m.name).replace("models/", ""))
+        usable = [n for n in names if n.startswith("gemini") and not any(
+            x in n for x in ("image", "tts", "embedding", "live", "audio", "robotics"))]
+        usable.sort(key=lambda n: ("flash" not in n, "lite" in n, tuple(-v for v in _version_key(n))))
+        return usable
+    except Exception:
+        return []
+
+
+def _candidate_models(api_key, preferred):
+    found = _discover_models(api_key)
+    order = [preferred] if preferred else []
+    order += [n for n in SPIKEY_PREFERRED_MODELS if not found or n in found]
+    order += found[:4]
+    seen, out = set(), []
+    for n in order:
+        if n and n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out[:5]
+
 
 def build_live_model_context() -> str:
-    tg_low = max(0.02, tg - 0.01)
-    tg_high = min(0.07, tg + 0.01)
-    ev_tg_low, px_dcf_tg_low, tv_sh_tg_low = _dcf_only_sens(g_rate, wacc, tg_low, post_shares_cr)
-    ev_tg_high, px_dcf_tg_high, tv_sh_tg_high = _dcf_only_sens(g_rate, wacc, tg_high, post_shares_cr)
-    fv_tg_low = _fv_sens(g_rate, wacc, tg_low, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-    fv_tg_high = _fv_sens(g_rate, wacc, tg_high, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-
-    wacc_low = max(0.08, wacc - 0.015)
-    wacc_high = min(0.20, wacc + 0.015)
-    fv_wacc_low = _fv_sens(g_rate, wacc_low, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-    fv_wacc_high = _fv_sens(g_rate, wacc_high, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-
-    g_low = max(0.10, g_rate - 0.10)
-    g_high = min(0.80, g_rate + 0.10)
-    fv_g_low = _fv_sens(g_low, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-    fv_g_high = _fv_sens(g_high, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
-
-    imp_eq = offer_price * post_shares_cr
-    imp_ev = max(500.0, imp_eq - net_cash_cr)
-    imp_yr5_rev = imp_ev / max(float(mdata["ev_rev_mult"]), 0.5)
-    imp_cagr = (((imp_yr5_rev / max(ltm_rev_cr, 1.0)) ** (1.0 / 5.0)) - 1.0) * 100.0
+    tg_low, tg_high = max(0.02, tg - 0.01), min(0.07, tg + 0.01)
+    _, px_dcf_tg_low, tv_sh_tg_low = dcf_only_at(tg_low)
+    _, px_dcf_tg_high, tv_sh_tg_high = dcf_only_at(tg_high)
+    rd = reverse_dcf()
 
     compact_state = {
         "issuer": selected_issuer,
@@ -680,129 +648,192 @@ def build_live_model_context() -> str:
         "role": role,
         "icdr": icdr_route,
         "inputs": {
-            "offer_inr": round(float(offer_price), 2),
-            "rev_growth_pct": float(rev_growth_pct),
-            "wacc_pct": float(wacc_pct),
-            "term_growth_pct": float(term_growth_pct),
-            "dilution_pct": float(primary_dilution_pct),
-            "var_days": int(var_horizon_days),
-            "conf": float(var_conf_level),
-            "df": float(student_df),
-            "vol_mult": float(vol_multiplier),
+            "offer_inr": round(float(offer_price), 2), "rev_growth_pct": float(rev_growth_pct),
+            "wacc_pct": float(wacc_pct), "term_growth_pct": float(term_growth_pct),
+            "dilution_pct": float(primary_dilution_pct), "var_days": int(var_horizon_days),
+            "conf": float(var_conf_level), "df": float(student_df), "vol_mult": float(vol_multiplier),
         },
         "valuation": {
-            "ltm_rev_cr": round(ltm_rev_cr, 1),
-            "post_shares_cr": round(post_shares_cr, 1),
-            "net_cash_cr": round(net_cash_cr, 1),
-            "pv_ufcf_cr": round(pv_ufcf_sum, 1),
-            "pv_tv_cr": round(pv_tv_cr, 1),
-            "ev_dcf_cr": round(ev_dcf_cr, 1),
-            "tv_share_pct": round(tv_share_pct, 1),
-            "px_dcf": round(price_dcf, 2),
-            "px_rev": round(price_rev, 2),
-            "px_cm": round(price_cm, 2),
-            "qoe_score": int(qoe_score),
-            "qoe_haircut_pct": round(qoe_haircut * 100.0, 2),
-            "blended_fv": round(blended_fair_value, 2),
-            "upside_pct": round(upside_pct * 100.0, 2),
-            "buyside_limit": round(buyside_entry_limit, 2),
-            "global_opt": round(global_optimal_price, 2),
-            "role_opt": round(role_optimal_price, 2),
-            "rev_dcf_cagr_pct": round(imp_cagr, 1),
+            "ltm_rev_cr": round(ltm_rev_cr, 1), "post_shares_cr": round(post_shares_cr, 1),
+            "net_cash_cr": round(net_cash_cr, 1), "pv_ufcf_cr": round(pv_ufcf_sum, 1),
+            "pv_tv_cr": round(pv_tv_cr, 1), "ev_dcf_cr": round(ev_dcf_cr, 1),
+            "tv_share_pct": round(tv_share_pct, 1), "px_dcf": round(price_dcf, 2),
+            "px_rev": round(price_rev, 2), "px_cm": round(price_cm, 2), "qoe_score": int(qoe_score),
+            "qoe_haircut_pct": round(qoe_haircut * 100.0, 2), "blended_fv": round(blended_fair_value, 2),
+            "upside_pct": round(upside_pct * 100.0, 2), "buyside_limit": round(buyside_entry_limit, 2),
+            "global_opt": round(global_optimal_price, 2), "role_opt": round(role_optimal_price, 2),
+            "rev_dcf_cagr_pct": round(rd["cagr"], 1),
         },
         "shocks": {
-            "tg_low_pct": round(tg_low * 100.0, 2),
-            "dcf_px_tg_low": round(px_dcf_tg_low, 2),
-            "tv_sh_tg_low_pct": round(tv_sh_tg_low, 1),
-            "fv_tg_low": round(fv_tg_low, 2),
-            "tg_high_pct": round(tg_high * 100.0, 2),
-            "dcf_px_tg_high": round(px_dcf_tg_high, 2),
-            "tv_sh_tg_high_pct": round(tv_sh_tg_high, 1),
-            "fv_tg_high": round(fv_tg_high, 2),
-            "fv_wacc_low": round(fv_wacc_low, 2),
-            "fv_wacc_high": round(fv_wacc_high, 2),
-            "fv_g_low": round(fv_g_low, 2),
-            "fv_g_high": round(fv_g_high, 2),
+            "tg_low_pct": round(tg_low * 100.0, 2), "dcf_px_tg_low": round(px_dcf_tg_low, 2),
+            "tv_sh_tg_low_pct": round(tv_sh_tg_low, 1), "fv_tg_low": round(fv_at(t=tg_low), 2),
+            "tg_high_pct": round(tg_high * 100.0, 2), "dcf_px_tg_high": round(px_dcf_tg_high, 2),
+            "tv_sh_tg_high_pct": round(tv_sh_tg_high, 1), "fv_tg_high": round(fv_at(t=tg_high), 2),
+            "fv_wacc_low": round(fv_at(w=max(0.08, wacc - 0.015)), 2),
+            "fv_wacc_high": round(fv_at(w=min(0.20, wacc + 0.015)), 2),
+            "fv_g_low": round(fv_at(g=max(0.10, g_rate - 0.10)), 2),
+            "fv_g_high": round(fv_at(g=min(0.80, g_rate + 0.10)), 2),
         },
         "cash_risk": {
-            "adj_ebitda_cr": round(adj_ebitda_cr, 1),
-            "ocf_cr": round(ocf_cr, 1),
-            "headline_fcf_cr": round(headline_fcf_cr, 1),
-            "cap_sw_cr": round(cap_sw_cr, 1),
-            "econ_fcf_cr": round(econ_fcf_cr, 1),
-            "issue_cr": round(total_issue_proceeds_cr, 1),
-            "cov_tot_x": round(cov_total, 2),
-            "cov_qib_x": round(cov_qib, 2),
-            "allot_pct": round(allotment_frac * 100.0, 1),
-            "allot_ret_pct": round(allotment_adj_ret_pct, 2),
-            "nav_alloc_pct": round(suggested_nav_alloc_pct, 2),
-            "var_inr": round(mc_var, 2),
-            "cvar_inr": round(mc_cvar, 2),
-            "breach_pct": round(breach_prob_pct, 1),
-            "x_exc": int(x_exc),
-            "kupiec_lr": round(lr_pof, 2),
-            "kupiec_p": round(kupiec_pval, 3),
-            "christ_lr": round(lr_ind, 2),
-            "christ_p": round(christ_pval, 3),
+            "adj_ebitda_cr": round(adj_ebitda_cr, 1), "ocf_cr": round(ocf_cr, 1),
+            "headline_fcf_cr": round(headline_fcf_cr, 1), "cap_sw_cr": round(cap_sw_cr, 1),
+            "econ_fcf_cr": round(econ_fcf_cr, 1), "issue_cr": round(total_issue_proceeds_cr, 1),
+            "cov_tot_x": round(cov_total, 2), "cov_qib_x": round(cov_qib, 2),
+            "allot_pct": round(allotment_frac * 100.0, 1), "allot_ret_pct": round(allotment_adj_ret_pct, 2),
+            "nav_alloc_pct": round(suggested_nav_alloc_pct, 2), "var_inr": round(mc_var, 2),
+            "cvar_inr": round(mc_cvar, 2), "breach_pct": round(breach_prob_pct, 1), "x_exc": int(x_exc),
+            "kupiec_lr": round(lr_pof, 2), "kupiec_p": round(kupiec_pval, 3),
+            "christ_lr": round(lr_ind, 2), "christ_p": round(christ_pval, 3),
         },
         "peers": {
-            k: {"rev_cr": v["ltm_rev_cr"], "ev_rev": v["ev_rev_mult"], "cm_pct": round(v["contrib_margin"]*100, 1), "offer": v["default_offer"], "g_pct": v["default_growth"]}
+            k: {"rev_cr": v["ltm_rev_cr"], "ev_rev": v["ev_rev_mult"], "cm_pct": round(v["contrib_margin"] * 100, 1),
+                "offer": v["default_offer"], "g_pct": v["default_growth"]}
             for k, v in MASTER_DATA.items()
         },
     }
     return json.dumps(compact_state)
 
-def ask_gemini_ic_robo(user_question: str, chat_history: list, model_name: str = "gemini-3.8-flash") -> str:
-    api_key = _get_gemini_api_key()
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY is missing in Streamlit Secrets or environment variables.")
 
-    live_json = build_live_model_context()
-    system_instruction = (
-        f"You are {AI_COPILOT_NAME} (v22.3.2), an elite, thorough, direct, and deeply analytical Star Hedge Fund PM, CRO & IPO Bookrunner wired to every formula and live number in this dashboard. "
-        f"Answer every single question asked about the model—whether simple, mathematical, strategic, or aggressive IC grilling—thoroughly, clearly, and completely, just like a senior portfolio manager & quantitative analyst explaining every step. "
-        f"Rules: "
-        f"1) Lead directly with a clear, structured answer using exact Rs Cr, Rs/share, multiples, and % from LIVE_DATA. "
-        f"2) Walk through the exact formulas, cash-flow/valuation bridges, sensitivity shocks, SEBI buckets, Greenshoe/Lock-up mechanics, Reverse DCF, and VaR/CVaR/Kupiec/Christoffersen math whenever relevant. "
-        f"3) Never dodge or fold under IC grilling—counter-route every bear/bull point with exact numbers and actionable positioning. "
-        f"4) Do NOT pass any minimal/thinking_budget parameter.\n"
-        f"LIVE_DATA: {live_json}"
-    )
+def _spikey_system_prompt(live_json):
+    return f"""You are {AI_COPILOT_NAME}, an elite hedge-fund PM, CRO and IPO bookrunner embedded in an institutional IPO valuation dashboard. You answer like a world-class AI assistant (ChatGPT / Claude): natural, conversational, clear, well structured, and you ALWAYS give a complete answer.
+
+HOW YOU ANSWER
+- Answer EVERY question: model mechanics, finance theory, accounting, SEBI/ICDR, trading, careers, code, or anything else. Never refuse, never say you cannot answer, never redirect to documentation.
+- Start with the direct answer in the first sentence, then explain step by step using exact numbers from LIVE_DATA (Rs Cr, Rs/share, multiples, %).
+- Show formulas and arithmetic for quantitative questions. Use short headers, bullets or tables only when they help; otherwise plain paragraphs.
+- Match length to the question: quick question, tight answer; deep question, thorough answer. End analytical answers with a one-line bottom line.
+
+DEFENDING THE MODEL
+- When challenged, defend the design choices with logic and numbers, and counter each bear/bull point with a specific figure and an actionable position.
+- Stay honest: defend firmly, but if a critic has a fair point (simulated pre-IPO data, terminal-value weight, stylised demand curve), acknowledge it in one sentence and show how the sensitivities, QoE haircut or margin of safety already contain it.
+
+MODEL FACTS
+- Blended fair value = 40% EV/Revenue + 40% 5Y DCF + 20% EV/Contribution-Margin, plus net cash, divided by post-issue shares, times (1 + QoE haircut). QoE haircut = -(100 - QoE score) x 0.25%.
+- DCF: revenue = LTM x (1+g)^t; EBITDA margin ramp 6/10/14/18/21%; D&A 3.5% of revenue; tax on EBIT; reinvestment 65/55/45/35/28% of NOPAT; Gordon terminal value; discounted at WACC.
+- Net cash = cash - debt - leases - other claims. Post shares = pre shares x (1 + primary dilution).
+- Subscription = max(0.15, (FV/price)^2.3 x 3.8); QIB 1.15x, NII 0.90x, retail 0.65x of base, weighted by ICDR route (Reg 6(1) 50/15/35, Reg 6(2) 75/15/10).
+- Optimizer: 50% discount-to-FV bell curve centred at 15% discount + 50% book strength. Buy-side limit = 85% of FV.
+- Risk: Student-t Monte Carlo (20,000 paths) for VaR/CVaR; 250-day simulated backtest with Kupiec POF (coverage) and Christoffersen (independence).
+- Greenshoe: max 15% over-allotment, 30-day stabilisation. Anchor lock-up: 50% at day 30, 50% at day 90.
+- Zepto and Flipkart use simulated/illustrative data; Swiggy and Eternal use reported-style baselines. This is decision support, not investment advice.
+
+LIVE_DATA (current dashboard state): {live_json}"""
+
+
+def _spikey_local_answer(question, live_json):
+    """Deterministic expert answer from live numbers. Used only if every API call fails."""
+    try:
+        L = json.loads(live_json)
+    except Exception:
+        L = {}
+    q = question.lower()
+    v, s, c, i = L.get("valuation", {}), L.get("shocks", {}), L.get("cash_risk", {}), L.get("inputs", {})
+    issuer = L.get("issuer", "the issuer")
+    offer, fv, up = i.get("offer_inr", 0), v.get("blended_fv", 0), v.get("upside_pct", 0)
+
+    def has(*w):
+        return any(x in q for x in w)
+
+    if has("terminal", "perpetual", "gordon"):
+        return (
+            f"**Terminal growth is the most sensitive DCF lever for {issuer}, and the model shows it openly.**\n\n"
+            f"At {i.get('term_growth_pct')}% growth, terminal value is **{v.get('tv_share_pct')}% of DCF EV** "
+            f"(Rs {v.get('pv_tv_cr', 0):,.0f} Cr of Rs {v.get('ev_dcf_cr', 0):,.0f} Cr).\n\n"
+            f"- Terminal growth {s.get('tg_low_pct')}%: DCF price Rs {s.get('dcf_px_tg_low')}, blended FV Rs {s.get('fv_tg_low')}\n"
+            f"- Terminal growth {s.get('tg_high_pct')}%: DCF price Rs {s.get('dcf_px_tg_high')}, blended FV Rs {s.get('fv_tg_high')}\n\n"
+            f"Defence: DCF is only 40% of the blend, so a 1-point shock moves blended FV from Rs {s.get('fv_tg_low')} to "
+            f"Rs {s.get('fv_tg_high')} around Rs {fv}. The other 60% is market-anchored (EV/Revenue, EV/Contribution Margin).\n\n"
+            f"**Bottom line:** TV weight is a fair critique of any growth-stage DCF; the blend and sensitivities contain it.")
+    if has("wacc", "discount rate"):
+        return (
+            f"**WACC at {i.get('wacc_pct')}% discounts the five explicit cash flows and the terminal value.** "
+            f"Shocking it +/-1.5 points moves blended FV between Rs {s.get('fv_wacc_high')} (higher WACC) and Rs {s.get('fv_wacc_low')} "
+            f"(lower WACC) around Rs {fv}. DCF is 40% of the blend, so the swing is dampened.\n\n"
+            f"**Bottom line:** WACC matters, but it cannot break the valuation alone.")
+    if has("growth", "revenue", "cagr", "miss"):
+        return (
+            f"**Revenue growth is the biggest operating driver; base case is {i.get('rev_growth_pct')}%.**\n\n"
+            f"- Growth -10 points: FV Rs {s.get('fv_g_low')}\n- Growth +10 points: FV Rs {s.get('fv_g_high')}\n"
+            f"- Base FV Rs {fv} vs offer Rs {offer} ({up:+.1f}%)\n\n"
+            f"The Reverse DCF says the offer needs about {v.get('rev_dcf_cagr_pct')}% revenue CAGR.\n\n"
+            f"**Bottom line:** if growth misses, the margin of safety (limit bid Rs {v.get('buyside_limit')}) protects you.")
+    if has("overpriced", "expensive", "defend", "bear", "justify", "valuation", "fair value", "undervalued", "worth", "subscribe", "weakest"):
+        side = "above" if offer > fv else "below"
+        return (
+            f"**Offer Rs {offer} sits {side} blended fair value of Rs {fv} ({up:+.1f}%).**\n\n"
+            f"- DCF Rs {v.get('px_dcf')} | EV/Revenue Rs {v.get('px_rev')} | EV/Contribution Margin Rs {v.get('px_cm')}\n"
+            f"- QoE {v.get('qoe_score')}/100 applies a {v.get('qoe_haircut_pct')}% haircut\n"
+            f"- Buy-side limit (15% MoS) Rs {v.get('buyside_limit')}; optimizer clearing price Rs {v.get('global_opt')}\n"
+            f"- Book coverage {c.get('cov_tot_x')}x; allotment about {c.get('allot_pct')}%\n\n"
+            f"Defence: three independent methods, haircut for earnings quality, stress-tested. Fair critique: pre-IPO inputs "
+            f"can be simulated and demand is stylised, which is why the call rests on a margin of safety, not the point estimate.\n\n"
+            f"**Bottom line:** bid up to Rs {v.get('buyside_limit')}; above that you pay for growth the model does not underwrite.")
+    if has("var", "cvar", "kupiec", "christoffersen", "backtest", "tail"):
+        return (
+            f"**Risk read for {issuer}:** {i.get('var_days')}-day VaR is Rs {c.get('var_inr')}/share, CVaR (average loss beyond VaR) "
+            f"Rs {c.get('cvar_inr')}, with {c.get('breach_pct')}% probability of finishing below offer.\n\n"
+            f"- **Kupiec POF** tests whether the *number* of exceptions matches expectation: LR {c.get('kupiec_lr')}, p={c.get('kupiec_p')} "
+            f"({'pass' if c.get('kupiec_p', 0) >= 0.05 else 'fail'}), exceptions {c.get('x_exc')}.\n"
+            f"- **Christoffersen** tests whether exceptions *cluster*: LR {c.get('christ_lr')}, p={c.get('christ_p')} "
+            f"({'pass' if c.get('christ_p', 0) >= 0.05 else 'warn'}).\n\n"
+            f"A model can have the right breach count and still fail if breaches arrive in streaks, hence both tests. "
+            f"Student-t fat tails (df {i.get('df')}) avoid understating crashes.\n\n"
+            f"**Bottom line:** size so CVaR fits the risk budget; suggested NAV allocation {c.get('nav_alloc_pct')}%.")
+    if has("greenshoe", "over-allot", "stabil"):
+        return ("**The greenshoe lets the bookrunner over-allot up to 15% and buy shares back within 30 days if price slips below offer.** "
+                "That buying supports the price; if price rises, the option is exercised to cover the short. It is temporary support, "
+                "not a floor. Tab 4 has the buyback, short and P&L ledger per scenario.")
+    if has("lock", "anchor", "unlock"):
+        return ("**Anchor lock-up:** 50% of anchor shares unlock at day 30 and 50% at day 90. Overhang = unlocked shares x assumed "
+                "selling ratio x price (Tab 4). Phase entries around those dates, since supply can hit a thin secondary market.")
+    if has("subscri", "undersub", "allot", "book", "qib", "sebi", "icdr"):
+        return (f"**Book coverage is {c.get('cov_tot_x')}x (QIB {c.get('cov_qib_x')}x) at Rs {offer}.** Demand rises as price falls below fair value "
+                f"(power 2.3 on FV/price), weighted by the ICDR bucket split. Allotment is about {c.get('allot_pct')}%, so allotment-adjusted "
+                f"return is {c.get('allot_ret_pct')}%. Under 1x coverage means re-price toward Rs {v.get('global_opt')}.")
+    if has("qoe", "quality of earnings", "haircut", "ebitda", "cash flow", "fcf"):
+        return (f"**QoE is {v.get('qoe_score')}/100, a {v.get('qoe_haircut_pct')}% haircut to fair value.** Adjusted EBITDA Rs {c.get('adj_ebitda_cr')} Cr, "
+                f"OCF Rs {c.get('ocf_cr')} Cr, headline FCF Rs {c.get('headline_fcf_cr')} Cr; after capitalised software "
+                f"(Rs {c.get('cap_sw_cr')} Cr) economic FCF is Rs {c.get('econ_fcf_cr')} Cr. Capitalised software is recurring reinvestment, not a one-off.")
+    return (f"**Snapshot for {issuer}:** offer Rs {offer} vs blended fair value Rs {fv} ({up:+.1f}%). DCF Rs {v.get('px_dcf')}, "
+            f"EV/Rev Rs {v.get('px_rev')}, EV/CM Rs {v.get('px_cm')}; QoE {v.get('qoe_score')}/100; coverage {c.get('cov_tot_x')}x; "
+            f"{i.get('var_days')}d CVaR Rs {c.get('cvar_inr')}.\n\nI'm answering from the model's live numbers (offline mode). "
+            f"Ask about terminal growth, WACC, growth shocks, overpricing, VaR/Kupiec, greenshoe, lock-up or QoE for a deep dive.")
+
+
+def spikey_stream(question, history, live_json, preferred):
+    """Yields text chunks. Never raises; always ends with a real answer."""
+    api_key = _get_gemini_api_key()
+    if genai is None or not api_key:
+        yield _spikey_local_answer(question, live_json)
+        return
 
     contents = []
-    for msg in chat_history[-6:]:
-        if msg.get("role") in ("user", "assistant") and msg.get("content"):
-            contents.append(
-                types.Content(
-                    role="user" if msg["role"] == "user" else "model",
-                    parts=[types.Part.from_text(text=str(msg["content"])[:1500])]
-                )
-            )
-    contents.append(
-        types.Content(
-            role="user",
-            parts=[types.Part.from_text(text=str(user_question))]
-        )
-    )
+    for m in history[-SPIKEY_HISTORY_TURNS:]:
+        if m.get("role") in ("user", "assistant") and m.get("content"):
+            contents.append(types.Content(
+                role="user" if m["role"] == "user" else "model",
+                parts=[types.Part.from_text(text=str(m["content"])[:2500])]))
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=str(question))]))
 
-    target_model = model_name if model_name else "gemini-3.8-flash"
-    client = genai.Client(
-        api_key=api_key,
-        http_options=types.HttpOptions(timeout=60000),
-    )
-    resp = client.models.generate_content(
-        model=target_model,
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0.35,
-            max_output_tokens=4096,
-        ),
-    )
-    txt = getattr(resp, "text", None)
-    if txt and txt.strip():
-        return txt.strip()
-    raise RuntimeError(f"Empty response returned by {target_model}.")
+    client = genai.Client(api_key=api_key, http_options=types.HttpOptions(timeout=SPIKEY_TIMEOUT_MS))
+    cfg = types.GenerateContentConfig(system_instruction=_spikey_system_prompt(live_json),
+                                      temperature=0.4, max_output_tokens=SPIKEY_MAX_TOKENS)
+    for model in _candidate_models(api_key, preferred):
+        yielded = False
+        try:
+            for chunk in client.models.generate_content_stream(model=model, contents=contents, config=cfg):
+                text = getattr(chunk, "text", None)
+                if text:
+                    yielded = True
+                    yield text
+            if yielded:
+                st.session_state["spikey_last_model"] = model
+                return
+        except Exception:
+            if yielded:
+                return
+            continue
+    yield _spikey_local_answer(question, live_json)
 
 # ==============================================================================
 # 6. HEADER, GOVERNANCE BANNER & SYNDICATE TENSION VIEW
@@ -817,26 +848,14 @@ st.markdown(f"""
 
 tc1, tc2, tc3 = st.columns(3)
 with tc1:
-    st.markdown(f"""
-    <div class="tension-card">
-        <strong>Issuer Stretch Price: Rs {issuer_stretch_price:,.2f}</strong><br>
-        <small>Seeks higher valuation & proceeds (+25% over fair value).</small>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="tension-card"><strong>Issuer Stretch Price: Rs {issuer_stretch_price:,.2f}</strong><br>
+    <small>Seeks higher valuation & proceeds (+25% over fair value).</small></div>""", unsafe_allow_html=True)
 with tc2:
-    st.markdown(f"""
-    <div class="tension-card">
-        <strong>Bookrunner Clearing Price: Rs {sellside_clearing_price:,.2f}</strong><br>
-        <small>Balances issue size with {opt_cov_tot:.2f}x SEBI book demand.</small>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="tension-card"><strong>Bookrunner Clearing Price: Rs {sellside_clearing_price:,.2f}</strong><br>
+    <small>Balances issue size with {opt_cov_tot:.2f}x SEBI book demand.</small></div>""", unsafe_allow_html=True)
 with tc3:
-    st.markdown(f"""
-    <div class="tension-card">
-        <strong>Buy-Side Entry Price (15% MoS): Rs {buyside_entry_limit:,.2f}</strong><br>
-        <small>Anchored to Blended Fair Value (Rs {blended_fair_value:,.2f}) with margin of safety.</small>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"""<div class="tension-card"><strong>Buy-Side Entry Price (15% MoS): Rs {buyside_entry_limit:,.2f}</strong><br>
+    <small>Anchored to Blended Fair Value (Rs {blended_fair_value:,.2f}) with margin of safety.</small></div>""", unsafe_allow_html=True)
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "1. Deal Room, Optimizer & Syndicate",
@@ -844,7 +863,7 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "3. Peer Comps, Tornado & Fan Chart",
     "4. Greenshoe, Lock-Up, 90d Path & VaR",
     "5. IC Challenge, Spikey AI & Report",
-    "6. Model Validation & Audit"
+    "6. Model Validation & Audit",
 ])
 
 # ==============================================================================
@@ -883,12 +902,12 @@ with tab1:
     fig_opt.add_trace(go.Scatter(x=price_grid, y=global_opt_scores, mode="lines", name="Global Joint Score", line=dict(color="#64748b", width=1.8, dash="dot")))
     fig_opt.add_trace(go.Scatter(
         x=[role_optimal_price], y=[role_optimal_score], mode="markers+text",
-        text=[f"{role.split()[0]} Opt: Rs {role_optimal_price:,.2f}"],
-        textposition="top right", textfont=dict(color="#1d4ed8", size=12),
-        marker=dict(color="#1d4ed8", size=10)
+        text=[f"{role.split()[0]} Opt: Rs {role_optimal_price:,.2f}"], textposition="top right",
+        textfont=dict(color="#1d4ed8", size=12), marker=dict(color="#1d4ed8", size=10), name="Role Optimum",
     ))
     fig_opt.add_vline(x=offer_price, line_dash="dash", line_color="#dc2626", annotation_text=f"Proposed: Rs {offer_price:,.2f}", annotation_position="bottom right")
-    fig_opt.update_layout(height=340, xaxis_title="Offer Price (Rs)", yaxis_title="Objective Score", yaxis=dict(range=[0.0, max(1.15, role_optimal_score + 0.18)]), margin=dict(t=30, b=35, l=45, r=25))
+    fig_opt.update_layout(height=340, xaxis_title="Offer Price (Rs)", yaxis_title="Objective Score",
+                          yaxis=dict(range=[0.0, max(1.15, role_optimal_score + 0.18)]), margin=dict(t=30, b=35, l=45, r=25))
     st.plotly_chart(fig_opt, use_container_width=True)
 
     c1, c2 = st.columns(2, gap="large")
@@ -897,7 +916,7 @@ with tab1:
         alloc_df = pd.DataFrame([
             {"Bucket": "QIB (excl. Anchor)", "Weight": f"{w_qib*0.40*100:.1f}%", "Sub.": f"{cov_qib:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib,0.01)):.1f}%"},
             {"Bucket": "Anchor Investors (QIB)", "Weight": f"{w_qib*0.60*100:.1f}%", "Sub.": f"{cov_qib*1.10:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.10,0.01)):.1f}%"},
-            {"Bucket": "Mutual Funds (5% QIB)", "Weight": f"{w_qib*0.05*100:.1f}%", "Sub.": f"{cov_qib*1.20:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.20,0.01)):.1f}%"},
+            {"Bucket": "  of which Mutual Funds (5% of QIB)", "Weight": f"{w_qib*0.05*100:.1f}%", "Sub.": f"{cov_qib*1.20:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_qib*1.20,0.01)):.1f}%"},
             {"Bucket": "NII / HNI", "Weight": f"{w_nii*100:.1f}%", "Sub.": f"{cov_nii:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_nii,0.01)):.1f}%"},
             {"Bucket": "Retail Individual (RII)", "Weight": f"{w_ret*100:.1f}%", "Sub.": f"{cov_ret:.2f}x", "Allotment": f"{min(100.0, 100.0/max(cov_ret,0.01)):.1f}%"},
         ])
@@ -918,18 +937,14 @@ with tab1:
         ])
         st.dataframe(cap_df, use_container_width=True, hide_index=True)
 
-    st.markdown("#### Simulated Order Book (Rs 35 - Rs 320 Price Ticks)")
-    st.caption("Simulated investor order schedule—not a live bookbuilding feed.")
+    st.markdown("#### Simulated Order Book (0.5x - 1.8x of Fair Value Price Ticks)")
+    st.caption("Simulated investor order schedule, not a live bookbuilding feed. Price ticks scale with the selected issuer's fair value.")
     ob_rows = []
-    for tp in np.linspace(35.0, 320.0, 12):
+    for tp in np.linspace(blended_fair_value * 0.5, blended_fair_value * 1.8, 12):
         ts, qs, ns, rs = get_subscription(float(tp), blended_fair_value)
         ob_rows.append({
-            "Price": f"Rs {tp:,.0f}",
-            "QIB": f"{qs:.2f}x",
-            "NII": f"{ns:.2f}x",
-            "Retail": f"{rs:.2f}x",
-            "Total Sub.": f"{ts:.2f}x",
-            "Demand Qty": f"{total_issue_shares_cr * ts:,.1f} Cr sh"
+            "Price": f"Rs {tp:,.0f}", "QIB": f"{qs:.2f}x", "NII": f"{ns:.2f}x", "Retail": f"{rs:.2f}x",
+            "Total Sub.": f"{ts:.2f}x", "Demand Qty": f"{total_issue_shares_cr * ts:,.1f} Cr sh",
         })
     st.dataframe(pd.DataFrame(ob_rows), use_container_width=True, hide_index=True)
 
@@ -938,19 +953,18 @@ with tab1:
 # ==============================================================================
 with tab2:
     st.markdown("### Master Historical Financial Dataset & Provenance")
+    src = f"{mdata['source_doc']} ({mdata['source_page']})"
     master_tbl = pd.DataFrame([
-        {"Item": "Audited FY25 Revenue", "Value": f"Rs {mdata['fy25_audited_rev_cr']:,.1f} Cr", "Type": "Audited Actual", "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": "FY25", "Retrieved": mdata["retrieval_date"]},
-        {"Item": "LTM Baseline Revenue", "Value": f"Rs {ltm_rev_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
-        {"Item": "Reported EBITDA", "Value": f"Rs {rep_ebitda_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": f"{mdata['source_doc']} ({mdata['source_page']})", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Audited FY25 Revenue", "Value": f"Rs {mdata['fy25_audited_rev_cr']:,.1f} Cr", "Type": "Audited Actual", "Source": src, "Period": "FY25", "Retrieved": mdata["retrieval_date"]},
+        {"Item": "LTM Baseline Revenue", "Value": f"Rs {ltm_rev_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": src, "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
+        {"Item": "Reported EBITDA", "Value": f"Rs {rep_ebitda_cr:,.1f} Cr", "Type": mdata["data_type"], "Source": src, "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
         {"Item": "Adjusted EBITDA", "Value": f"Rs {adj_ebitda_cr:,.1f} Cr", "Type": "Analyst / Simulated Adj.", "Source": "Master QoE Bridge", "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
         {"Item": "Cash / Debt / Leases", "Value": f"Cash Rs {gross_cash_cr:,.0f} | Debt Rs {debt_cr:,.0f} | Leases Rs {leases_cr:,.0f}", "Type": mdata["data_type"], "Source": mdata["source_doc"], "Period": mdata["reporting_period"], "Retrieved": mdata["retrieval_date"]},
         {"Item": "Post-Issue Shares", "Value": f"{post_shares_cr:,.1f} Cr", "Type": "Post-IPO Cap Table", "Source": f"{pre_shares_cr:,.1f} Cr + {primary_dilution_pct:.0f}%", "Period": "IPO", "Retrieved": mdata["retrieval_date"]},
     ])
     st.dataframe(master_tbl, use_container_width=True, hide_index=True)
 
-    st.info(
-        "Why Capitalized Software/R&D Is Deducted from Headline FCF: Platform/software engineering costs capitalized on the balance sheet represent ongoing economic reinvestment rather than one-off items. Deducting capitalized software/R&D from Headline FCF gives True Economic FCF without double-counting operating cash flow."
-    )
+    st.info("Why Capitalized Software/R&D Is Deducted from Headline FCF: Platform/software engineering costs capitalized on the balance sheet represent ongoing economic reinvestment rather than one-off items. Deducting capitalized software/R&D from Headline FCF gives True Economic FCF without double-counting operating cash flow.")
     adj_txt = "; ".join([f"{a[0]}: Rs {a[1]:+.1f} Cr" for a in mdata["ebitda_adjustments"]])
     qoe_rec = pd.DataFrame([
         {"Bridge Step": "Reported EBITDA", "Amount": f"Rs {rep_ebitda_cr:,.1f} Cr"},
@@ -970,7 +984,7 @@ with tab2:
     st.dataframe(qoe_df, use_container_width=True, hide_index=True)
 
     st.markdown("#### 5-Year Unlevered FCF Bridge (Revenue -> EBITDA -> EBIT -> Tax -> NOPAT -> Reinvestment -> UFCF)")
-    st.dataframe(pd.DataFrame(dcf_rows)[["Year", "Revenue", "EBITDA", "EBIT", "Tax", "NOPAT", "Reinvestment", "Unlevered FCF", "PV of UFCF"]], use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(dcf_rows), use_container_width=True, hide_index=True)
 
     st.markdown("#### EV-to-Equity Bridge, Terminal Value Share & Forward EPS Bridge")
     sh_lbl = f"Per Share (/ {post_shares_cr:,.1f} Cr)"
@@ -985,21 +999,14 @@ with tab2:
     st.dataframe(ev_eq_df, use_container_width=True, hide_index=True)
 
     st.markdown(f"#### Reverse DCF - What Must Be True to Justify Offer Price (Rs {offer_price:,.2f})?")
-    imp_eq = offer_price * post_shares_cr
-    imp_ev = max(500.0, imp_eq - net_cash_cr)
-    imp_yr5_rev = imp_ev / max(float(mdata["ev_rev_mult"]), 0.5)
-    imp_cagr = (((imp_yr5_rev / max(ltm_rev_cr, 1.0)) ** (1.0 / 5.0)) - 1.0) * 100.0
-    imp_fcf_m = float(np.clip((imp_ev * (wacc - tg)) / max(imp_yr5_rev * (1.0 + tg), 1.0) * 100.0, 1.0, 45.0))
-    imp_ebitda_m = float(np.clip(imp_fcf_m + 9.5, 5.0, 55.0))
-    imp_reinv = float(np.clip(25.0 + max(0.0, imp_cagr - 20.0) * 1.1, 15.0, 80.0))
-
+    rd = reverse_dcf()
     rev_dcf = pd.DataFrame([
-        {"Metric": "Implied Equity & Target EV", "Required @ Offer": f"Eq Rs {imp_eq:,.0f} Cr | EV Rs {imp_ev:,.0f} Cr", "Base Case": f"DCF EV Rs {ev_dcf_cr:,.0f} Cr"},
-        {"Metric": "Implied 5Y Revenue CAGR", "Required @ Offer": f"{imp_cagr:.1f}%", "Base Case": f"{rev_growth_pct:.1f}%"},
-        {"Metric": "Implied Terminal FCF Margin", "Required @ Offer": f"{imp_fcf_m:.1f}%", "Base Case": "8.5%"},
-        {"Metric": "Implied Terminal EBITDA Margin", "Required @ Offer": f"{imp_ebitda_m:.1f}%", "Base Case": "21.0%"},
+        {"Metric": "Implied Equity & Target EV", "Required @ Offer": f"Eq Rs {rd['eq']:,.0f} Cr | EV Rs {rd['ev']:,.0f} Cr", "Base Case": f"DCF EV Rs {ev_dcf_cr:,.0f} Cr"},
+        {"Metric": "Implied 5Y Revenue CAGR", "Required @ Offer": f"{rd['cagr']:.1f}%", "Base Case": f"{rev_growth_pct:.1f}%"},
+        {"Metric": "Implied Terminal FCF Margin", "Required @ Offer": f"{rd['fcf_m']:.1f}%", "Base Case": "8.5%"},
+        {"Metric": "Implied Terminal EBITDA Margin", "Required @ Offer": f"{rd['ebitda_m']:.1f}%", "Base Case": "21.0%"},
         {"Metric": "Implied Exit Multiple (EV/Rev)", "Required @ Offer": f"{mdata['ev_rev_mult']:.1f}x", "Base Case": f"{mdata['ev_rev_mult']:.1f}x"},
-        {"Metric": "Required Reinvestment Rate", "Required @ Offer": f"{imp_reinv:.1f}% of NOPAT", "Base Case": "28.0%"},
+        {"Metric": "Required Reinvestment Rate", "Required @ Offer": f"{rd['reinv']:.1f}% of NOPAT", "Base Case": "28.0%"},
     ])
     st.dataframe(rev_dcf, use_container_width=True, hide_index=True)
 
@@ -1014,27 +1021,22 @@ with tab3:
         usd_m = (orig_cr * 10.0) / FX_RATE_INR_PER_USD
         sh_txt = f"{post_shares_cr:,.1f} Cr" if p["Shares_Cr"] is None else f"{float(p['Shares_Cr']):,.1f} Cr"
         p_list.append({
-            "Issuer": p["Issuer"],
-            "Ticker": p["Ticker"],
-            "Status": p["MarketType"],
-            "Native (INR Cr)": f"Rs {orig_cr:,.1f} Cr",
-            "USD MCap ($M)": f"${usd_m:,.1f}M",
-            "Shares": sh_txt,
-            "Basis": p["Basis"],
-            "EV / Rev": f"{p['EV_Rev']:.1f}x",
-            "Fwd P/E": "N/A" if p["Fwd_PE"] is None else f"{p['Fwd_PE']:.1f}x",
-            "Rationale": p["Rationale"]
-        })
+            "Issuer": p["Issuer"], "Ticker": p["Ticker"], "Status": p["MarketType"],
+            "Native (INR Cr)": f"Rs {orig_cr:,.1f} Cr", "USD MCap ($M)": f"${usd_m:,.1f}M", "Shares": sh_txt,
+            "Basis": p["Basis"], "EV / Rev": f"{p['EV_Rev']:.1f}x",
+            "Fwd P/E": "N/A" if p["Fwd_PE"] is None else f"{p['Fwd_PE']:.1f}x", "Rationale": p["Rationale"],
+})
     st.dataframe(pd.DataFrame(p_list), use_container_width=True, hide_index=True)
 
     st.markdown("#### Tornado Sensitivity Chart (Low vs. High Case Fair Value)")
+    evr0, cm0 = float(mdata["ev_rev_mult"]), float(mdata["contrib_margin"])
     t_drivers = [
-        ("Revenue CAGR", _fv_sens(max(0.10, g_rate - 0.10), wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(min(0.80, g_rate + 0.10), wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
-        ("WACC", _fv_sens(g_rate, min(0.20, wacc + 0.015), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(g_rate, max(0.08, wacc - 0.015), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
-        ("Terminal Growth", _fv_sens(g_rate, wacc, max(0.02, tg - 0.01), mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(g_rate, wacc, min(0.07, tg + 0.01), mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
-        ("EV/Rev Multiple", _fv_sens(g_rate, wacc, tg, max(1.5, mdata["ev_rev_mult"] - 1.0), mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr), _fv_sens(g_rate, wacc, tg, mdata["ev_rev_mult"] + 1.0, mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)),
-        ("Contrib. Margin", _fv_sens(g_rate, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], max(0.10, mdata["contrib_margin"] - 0.05), post_shares_cr), _fv_sens(g_rate, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], min(0.60, mdata["contrib_margin"] + 0.05), post_shares_cr)),
-        ("Diluted Shares", _fv_sens(g_rate, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr * 1.15), _fv_sens(g_rate, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr * 0.85)),
+        ("Revenue CAGR", fv_at(g=max(0.10, g_rate - 0.10)), fv_at(g=min(0.80, g_rate + 0.10))),
+        ("WACC", fv_at(w=min(0.20, wacc + 0.015)), fv_at(w=max(0.08, wacc - 0.015))),
+        ("Terminal Growth", fv_at(t=max(0.02, tg - 0.01)), fv_at(t=min(0.07, tg + 0.01))),
+        ("EV/Rev Multiple", fv_at(evr=max(1.5, evr0 - 1.0)), fv_at(evr=evr0 + 1.0)),
+        ("Contrib. Margin", fv_at(cm=max(0.10, cm0 - 0.05)), fv_at(cm=min(0.60, cm0 + 0.05))),
+        ("Diluted Shares", fv_at(sh=post_shares_cr * 1.15), fv_at(sh=post_shares_cr * 0.85)),
     ]
     t_sorted = sorted(t_drivers, key=lambda x: abs(x[2] - x[1]))
     fig_t = go.Figure()
@@ -1061,13 +1063,10 @@ with tab3:
             ufs = nops + rs * da_share - res
             c_pv += ufs / ((1.0 + mcw) ** sy)
         vp = ((c_pv + net_cash_cr * 0.5) / post_shares_cr) * (1.0 + qoe_haircut)
-        p10.append(float(np.percentile(vp, 10)))
-        p25.append(float(np.percentile(vp, 25)))
-        p50.append(float(np.percentile(vp, 50)))
-        p75.append(float(np.percentile(vp, 75)))
-        p90.append(float(np.percentile(vp, 90)))
+        for lst, pc in zip((p10, p25, p50, p75, p90), (10, 25, 50, 75, 90)):
+            lst.append(float(np.percentile(vp, pc)))
 
-    mc_end = np.array([_fv_sens(float(gi), float(wi), tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr) for gi, wi in zip(mcg[:800], mcw[:800])])
+    mc_end = np.array([fv_at(g=float(gi), w=float(wi)) for gi, wi in zip(mcg[:800], mcw[:800])])
     p_below = float(np.mean(mc_end < offer_price) * 100.0)
     p_target = float(np.mean(mc_end >= offer_price * 1.20) * 100.0)
 
@@ -1092,7 +1091,7 @@ with tab3:
 # ==============================================================================
 with tab4:
     st.markdown("### Greenshoe Stabilisation Simulator (SEBI Max 15% Over-Allotment / 30-Day Window)")
-    st.caption("Simulated stabilisation engine—not a live market feed.")
+    st.caption("Simulated stabilisation engine, not a live market feed.")
     g1, g2, g3 = st.columns(3)
     gs_px_mode = g1.selectbox("Market Price Path", ["Price Falls Below Offer Price", "Price Stays Near Offer Price", "Price Rises Above Offer Price"], index=0)
     gs_dem_mode = g2.selectbox("Demand Regime", ["Weak Demand", "Moderate Demand", "Strong Demand"], index=0)
@@ -1104,12 +1103,9 @@ with tab4:
         bb_ratio = 0.85 if gs_fund_mode != "Stabilisation Funds Exhausted" else 0.45
         avg_bb_px = offer_price * 0.93
     elif gs_px_mode == "Price Stays Near Offer Price":
-        bb_ratio = 0.40
-        avg_bb_px = offer_price * 0.99
+        bb_ratio, avg_bb_px = 0.40, offer_price * 0.99
     else:
-        bb_ratio = 0.05
-        avg_bb_px = offer_price * 1.03
-
+        bb_ratio, avg_bb_px = 0.05, offer_price * 1.03
     if gs_fund_mode == "30d Window Expires w/ Short":
         bb_ratio = min(bb_ratio, 0.60)
 
@@ -1132,8 +1128,7 @@ with tab4:
     st.markdown("#### Anchor Lock-Up & Supply Overhang (30-Day & 90-Day Expiries)")
     sell_pct = st.slider("Assumed Unlock Selling Ratio (%)", 5.0, 75.0, 25.0, 5.0)
     anc_tot = total_issue_shares_cr * (w_qib * 0.60)
-    t30 = anc_tot * 0.50
-    t90 = anc_tot * 0.50
+    t30 = t90 = anc_tot * 0.50
     st.dataframe(pd.DataFrame([
         {"Window": "T+0 to T+30", "Unlocked": "0.00 Cr", "Est. Supply": "Rs 0.0 Cr", "Absorption Note": "Locked under SEBI anchor window"},
         {"Window": "Day 30 Expiry (50%)", "Unlocked": f"{t30:,.2f} Cr", "Est. Supply": f"Rs {(t30*(sell_pct/100.0))*offer_price:,.1f} Cr ({sell_pct:.0f}% sold)", "Absorption Note": "Tested vs. secondary liquidity"},
@@ -1163,12 +1158,8 @@ with tab4:
 
     exc_idx_arr = np.where(exc_flags == 1)[0]
     st.dataframe(pd.DataFrame([
-        {
-            "Obs (t-250..t-1)": int(i - 250),
-            "Return": f"{hist_daily_rets[i]*100:+.2f}%",
-            "VaR Limit": f"-{daily_var_thresh*100:.2f}%",
-            "Loss": f"Rs {max(0.0, -hist_daily_rets[i]*offer_price):,.2f}"
-        }
+        {"Obs (t-250..t-1)": int(i - 250), "Return": f"{hist_daily_rets[i]*100:+.2f}%",
+         "VaR Limit": f"-{daily_var_thresh*100:.2f}%", "Loss": f"Rs {max(0.0, -hist_daily_rets[i]*offer_price):,.2f}"}
         for i in exc_idx_arr[:10]
     ]), use_container_width=True, hide_index=True)
 
@@ -1184,34 +1175,34 @@ with tab5:
         "What if the listing price falls 20%?",
         "What if the anchor investors sell after lock-up expiry?",
         "What happens if the greenshoe is fully utilised?",
-        "What happens if the company needs additional capital?"
+        "What happens if the company needs additional capital?",
     ]
     q_pick = st.selectbox("Select Challenge Question", c_qs, index=0)
 
-    if q_pick == "Why is this IPO overpriced?":
+    if q_pick == c_qs[0]:
         c_calc = f"Offer Rs {offer_price:,.2f} vs. Blended Fair Value Rs {blended_fair_value:,.2f} ({upside_pct*100:+.1f}%); Global Optimal Rs {global_optimal_price:,.2f}."
         c_imp = f"Coverage is {cov_total:.2f}x; {var_horizon_days}d breach probability is {breach_prob_pct:.1f}%."
         c_rec = f"Buy-Side limit bid Rs {buyside_entry_limit:,.2f} (15% MoS) or Sell-Side clearing target Rs {global_optimal_price:,.2f}."
-    elif q_pick == "What happens if revenue growth misses by 15%?":
+    elif q_pick == c_qs[1]:
         gm = max(0.05, g_rate - 0.15)
-        fvm = _fv_sens(gm, wacc, tg, mdata["ev_rev_mult"], mdata["ev_cm_mult"], mdata["contrib_margin"], post_shares_cr)
+        fvm = fv_at(g=gm)
         c_calc = f"Growth falls from {g_rate*100:.1f}% to {gm*100:.1f}%, shifting Fair Value from Rs {blended_fair_value:,.2f} to Rs {fvm:,.2f}."
         c_imp = f"Implied upside/downside vs. Offer becomes {((fvm-offer_price)/max(offer_price,0.01))*100:+.1f}%."
         c_rec = "Require wider margin of safety or lower clearing price."
-    elif q_pick == "What if the IPO is undersubscribed?":
+    elif q_pick == c_qs[2]:
         c_calc = f"Coverage < 1.0x (current base: {cov_total:.2f}x) indicates weak book demand relative to issue size."
         c_imp = "Higher listing pressure and greater reliance on greenshoe / secondary liquidity."
         c_rec = "Re-price downward toward clearing level or reassess timing."
-    elif q_pick == "What if the listing price falls 20%?":
+    elif q_pick == c_qs[3]:
         p20 = offer_price * 0.80
         c_calc = f"Price moves from Rs {offer_price:,.2f} to Rs {p20:,.2f} (Rs {offer_price - p20:,.2f}/sh loss vs. {var_horizon_days}d CVaR Rs {mc_cvar:,.2f})."
         c_imp = "Tests tail risk cushion and mark-to-market drawdown tolerance."
         c_rec = "Keep position size within CVaR risk budget."
-    elif q_pick == "What if the anchor investors sell after lock-up expiry?":
+    elif q_pick == c_qs[4]:
         c_calc = f"{anc_tot:,.2f} Cr anchor shares unlock across 30d/90d; {sell_pct:.0f}% selling = Rs {(anc_tot*(sell_pct/100.0))*offer_price:,.1f} Cr supply."
         c_imp = "Can weigh on secondary price if daily turnover is thin."
         c_rec = "Phase entries around Day 30 and Day 90 lock-up windows."
-    elif q_pick == "What happens if the greenshoe is fully utilised?":
+    elif q_pick == c_qs[5]:
         c_calc = f"Up to {max_gs_sh:,.2f} Cr shares (15%) over-allotted with Rs {gs_pool_cr:,.1f} Cr stabilisation pool over 30 days."
         c_imp = "Provides temporary stabilisation support while active, not a permanent floor."
         c_rec = "Monitor remaining short position and 30-day window expiry."
@@ -1230,66 +1221,56 @@ with tab5:
     - **Recommendation:** **{c_rec}**
     """)
 
+    # ---------------------------- SPIKEY CHAT PANEL ----------------------------
     st.markdown("---")
-    st.markdown(f"### {AI_COPILOT_NAME} (v22.3.2 Full-Depth Star PM AI Co-Pilot) — `{selected_issuer}`")
-    c_top1, c_top2 = st.columns([3, 1])
-    ai_model = c_top1.selectbox(
-        "Gemini Model (gemini-3.8-flash default; no minimal-thinking flag; 4096 max output tokens)",
-        ["gemini-3.8-flash", "gemini-3.0-flash", "gemini-3.0-pro"],
-        index=0,
-        key="gemini_model_picker"
-    )
-    if c_top2.button("Clear Chat", use_container_width=True):
-        st.session_state["ai_ic_messages"] = [
-            {
-                "role": "assistant",
-                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.2`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
-            }
-        ]
-        st.rerun()
+    st.markdown(f"### {AI_COPILOT_NAME} - IC Co-Pilot | `{selected_issuer}`")
 
+    greeting = (f"Hey, I'm **{AI_COPILOT_NAME}**. I'm wired into every formula and live number for **{selected_issuer}** "
+                f"(`{mdata['ticker']}`). Ask me anything: how the model works, why the price is what it is, stress tests, "
+                f"finance concepts, or hit me with your toughest IC question and I'll defend it.")
     if "ai_ic_messages" not in st.session_state:
-        st.session_state["ai_ic_messages"] = [
-            {
-                "role": "assistant",
-                "content": f"Hey, I'm **{AI_COPILOT_NAME}** (`v22.3.2`)—wired directly into every formula, bridge, sensitivity shock, and risk metric for **{selected_issuer}** (`{mdata['ticker']}`). Ask me anything about the model—formulas, valuation bridges, stress tests, or full IC grilling—and I'll break it down completely."
-            }
-        ]
+        st.session_state["ai_ic_messages"] = [{"role": "assistant", "content": greeting}]
+
+    top1, top2, top3 = st.columns([3, 1, 1])
+    ai_model = top1.selectbox("Preferred model (auto-falls back if unavailable)", SPIKEY_PREFERRED_MODELS, index=0, key="gemini_model_picker")
+    if top2.button("Clear chat", use_container_width=True):
+        st.session_state["ai_ic_messages"] = [{"role": "assistant", "content": greeting}]
+        st.rerun()
+    transcript = "\n\n".join(f"{m['role'].upper()}: {m['content']}" for m in st.session_state["ai_ic_messages"])
+    top3.download_button("Save chat", transcript.encode("utf-8"), file_name="spikey_chat.txt", use_container_width=True)
 
     starter_qs = [
-        f"What happens if I change terminal growth for {selected_issuer}?",
-        f"Defend this {selected_issuer} valuation against an IC bear attacking TV share & growth!",
-        f"How do Kupiec POF and Christoffersen tests differ on {selected_issuer}?",
+        "What happens if terminal growth changes?",
+        "Defend this valuation against an IC bear.",
+        "Kupiec vs Christoffersen: what's the difference?",
+        "Walk me through the fair value bridge.",
+        "Is this IPO worth subscribing to at the offer price?",
+        "What are the weakest assumptions in this model?",
     ]
+    pending_q = None
     scols = st.columns(3)
-    for i, sq in enumerate(starter_qs):
-        if scols[i].button(sq[:46] + "...", key=f"sq_{i}", use_container_width=True):
-            st.session_state["ai_ic_messages"].append({"role": "user", "content": sq})
-            with st.spinner(f"{AI_COPILOT_NAME} is running full formula & IC analysis..."):
-                try:
-                    ans = ask_gemini_ic_robo(sq, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
-                except Exception as err:
-                    ans = f"**[{AI_COPILOT_NAME} Live Call Error]:** `{err}`"
-            st.session_state["ai_ic_messages"].append({"role": "assistant", "content": ans})
+    for idx, sq in enumerate(starter_qs):
+        if scols[idx % 3].button(sq, key=f"sq_{idx}", use_container_width=True):
+            pending_q = sq
 
     for msg in st.session_state["ai_ic_messages"]:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    user_q = st.chat_input(f"Ask {AI_COPILOT_NAME} anything about {selected_issuer} (formulas, sensitivity, or grill the thesis)...")
+    user_q = st.chat_input(f"Ask {AI_COPILOT_NAME} anything about {selected_issuer} (formulas, sensitivity, or grill the thesis)...") or pending_q
     if user_q:
+        history = list(st.session_state["ai_ic_messages"])
         st.session_state["ai_ic_messages"].append({"role": "user", "content": user_q})
         with st.chat_message("user"):
             st.markdown(user_q)
+        st.session_state.pop("spikey_last_model", None)
         with st.chat_message("assistant"):
-            with st.spinner(f"{AI_COPILOT_NAME} is running full formula & IC analysis..."):
-                try:
-                    reply = ask_gemini_ic_robo(user_q, st.session_state["ai_ic_messages"][:-1], model_name=ai_model)
-                except Exception as err:
-                    reply = f"**[{AI_COPILOT_NAME} Live Call Error]:** `{err}`"
-            st.markdown(reply)
+            reply = st.write_stream(spikey_stream(user_q, history, build_live_model_context(), ai_model))
         st.session_state["ai_ic_messages"].append({"role": "assistant", "content": reply})
+        if st.session_state.get("spikey_last_model"):
+            st.caption(f"Answered by {st.session_state['spikey_last_model']}")
 
+    # --------------------------- LIVE IC REPORT --------------------------------
     st.markdown("---")
     st.markdown("#### Live Investment Committee Report")
     rep_md = f"""# IC REPORT - {selected_issuer.upper()} ({mdata['ticker']})
@@ -1312,12 +1293,9 @@ Provenance: {mdata['source_doc']} ({mdata['source_page']}) | Period: {mdata['rep
 """
     st.text_area("IC Report Preview", rep_md, height=280)
     st.download_button(
-        "Download IC Report (.MD)",
-        data=rep_md.encode("utf-8"),
+        "Download IC Report (.MD)", data=rep_md.encode("utf-8"),
         file_name=f"IC_Report_{mdata['ticker'].replace('.', '_')}_{datetime.now().strftime('%Y%m%d')}.md",
-        mime="text/markdown",
-        type="primary",
-        use_container_width=True
+        mime="text/markdown", type="primary", use_container_width=True,
     )
 
 # ==============================================================================
